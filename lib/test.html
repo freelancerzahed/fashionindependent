@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+     function calculateHeadAndNeck(headSizeSliderVal, neckWidthSliderVal) {
+  // -------------------------------------------
+  // HEAD SIZE
+  // n = increment value (example .125)
+  // Head size = n * slider value
+  // -------------------------------------------
+  const HEAD_INCREMENT = 0.125;
+  const headSize = HEAD_INCREMENT * headSizeSliderVal;
+
+  // -------------------------------------------
+  // NECK WIDTH
+  // Formula changes depending on head size
+  // -------------------------------------------
+  let neckWidth;
+
+  if (headSize < 0.75) {
+    // If < .75 → dynamic increment (example: 0.25)
+    const NECK_INCREMENT = 0.25; 
+    neckWidth = NECK_INCREMENT * neckWidthSliderVal;
+
+  } else {
+    // If >= .75 → fixed increment 0.2
+    const FIXED_INCREMENT = 0.2;
+    neckWidth = FIXED_INCREMENT * (neckWidthSliderVal + 1);
+  }
+
+  return {
+    headSize,
+    neckWidth
+  };
+}
+
+// -------------------------------------------
+// Example test (your sample values)
+// -------------------------------------------
+for (let slider = 0; slider <= 5; slider++) {
+  const { neckWidth } = calculateHeadAndNeck(8, slider);
+  console.log(`Neck width for slider ${slider}:`, neckWidth);
+}
+
+    </script>
+</body>
+</html>
