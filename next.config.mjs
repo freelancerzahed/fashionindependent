@@ -46,6 +46,7 @@ const nextConfig = {
   // Specify root directory to resolve workspace warning
   distDir: '.next',
   poweredByHeader: false,
+
 }
 
 export default nextConfig

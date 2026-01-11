@@ -6,32 +6,39 @@ import { CampaignCard } from "@/components/campaign-card"
 import { CarouselSlider } from "@/components/carousel-slider"
 import { HeroSlide } from "@/components/hero-slide"
 import { BlogSlide } from "@/components/blog-slide"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MobileTabs } from "@/components/mobile-tabs"
 
 export default function HomePage() {
   const [activeFilter, setActiveFilter] = useState("new")
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
 
-  const campaigns = Array.from({ length: 6 }, (_, i) => ({
-    id: `campaign-${i + 1}`,
-    title: `Fashion Design ${i + 1}`,
-    designer: `Designer ${i + 1}`,
-    image: `/placeholder.svg?height=400&width=400&query=fashion design ${i + 1}`,
-    fundedAmount: Math.floor(Math.random() * 15000) + 5000,
-    fundingGoal: 20000,
-    backers: Math.floor(Math.random() * 100) + 20,
-    daysRemaining: Math.floor(Math.random() * 28) + 2,
-    category: "Womenswear",
-    subcategory: "Dresses",
-    description: `Beautiful sustainable fashion design by Designer ${i + 1}. Made with eco-friendly materials and ethical production practices.`,
-    status: "active" as const,
-    pledgeOptions: [
-      { id: `pledge-${i}-1`, amount: 50, description: "Early Bird", quantity: 20 },
-      { id: `pledge-${i}-2`, amount: 100, description: "Standard", quantity: 100 },
-      { id: `pledge-${i}-3`, amount: 250, description: "Premium", quantity: 10 },
-    ],
-    createdAt: new Date(),
-  }))
+  useEffect(() => {
+    // Generate campaigns only on the client side to avoid hydration mismatch
+    const generatedCampaigns = Array.from({ length: 6 }, (_, i) => ({
+      id: `campaign-${i + 1}`,
+      title: `Fashion Design ${i + 1}`,
+      designer: `Designer ${i + 1}`,
+      image: `/placeholder.svg?height=400&width=400&query=fashion design ${i + 1}`,
+      fundedAmount: Math.floor(Math.random() * 15000) + 5000,
+      fundingGoal: 20000,
+      backers: Math.floor(Math.random() * 100) + 20,
+      daysRemaining: Math.floor(Math.random() * 28) + 2,
+      category: "Womenswear",
+      subcategory: "Dresses",
+      description: `Beautiful sustainable fashion design by Designer ${i + 1}. Made with eco-friendly materials and ethical production practices.`,
+      status: "active" as const,
+      pledgeOptions: [
+        { id: `pledge-${i}-1`, amount: 50, description: "Early Bird", quantity: 20 },
+        { id: `pledge-${i}-2`, amount: 100, description: "Standard", quantity: 100 },
+        { id: `pledge-${i}-3`, amount: 250, description: "Premium", quantity: 10 },
+      ],
+      createdAt: new Date(),
+    }))
+    setCampaigns(generatedCampaigns)
+    setIsLoaded(true)
+  }, [])
 
   const heroSlides = [
     {
@@ -157,7 +164,7 @@ export default function HomePage() {
             <div className="md:hidden mb-6">
               <MobileTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter}>
                 <div className="grid grid-cols-1 gap-6">
-                  {campaigns.map((campaign) => (
+                  {isLoaded && campaigns.map((campaign) => (
                     <CampaignCard key={campaign.id} campaign={campaign} />
                   ))}
                 </div>
@@ -165,7 +172,7 @@ export default function HomePage() {
             </div>
 
             <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {campaigns.map((campaign) => (
+              {isLoaded && campaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
               ))}
             </div>

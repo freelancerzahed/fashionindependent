@@ -63,7 +63,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
             <p className="text-xs text-neutral-600">{backersCount} backers</p>
           </div>
         </div>
-        <p className="text-sm font-semibold">
+        <p className="text-sm font-semibold" suppressHydrationWarning>
           ${campaign.fundedAmount.toLocaleString()}{" "}
           <span className="text-neutral-600 font-normal">of ${campaign.fundingGoal.toLocaleString()}</span>
         </p>

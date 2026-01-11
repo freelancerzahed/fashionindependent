@@ -36,19 +36,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    setError("")
-    setIsLoading(true)
-    try {
-      await login(demoEmail, demoPassword)
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Demo login failed")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <main className="flex-1 flex items-center justify-center px-4 py-12">
@@ -73,37 +60,6 @@ export default function LoginPage() {
                 <p className="text-red-700 text-sm font-medium">{error}</p>
               </div>
             )}
-
-            {/* Demo Login Section */}
-            <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-              <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
-                <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                Quick Demo Login
-              </p>
-              <div className="space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full text-sm bg-white hover:bg-slate-50 border-blue-200 text-slate-700 transition-all duration-200"
-                  onClick={() => handleDemoLogin("backer@example.com", "demo123")}
-                  disabled={isLoading}
-                >
-                  Backer Demo
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full text-sm bg-white hover:bg-slate-50 border-blue-200 text-slate-700 transition-all duration-200"
-                  onClick={() => handleDemoLogin("creator@example.com", "demo123")}
-                  disabled={isLoading}
-                >
-                  Creator Demo
-                </Button>
-              </div>
-              <p className="text-xs text-blue-700 mt-3 leading-relaxed">
-                <strong>Demo:</strong> Use any demo button or email <code className="bg-white px-1.5 py-0.5 rounded text-xs font-mono">backer@example.com</code> / <code className="bg-white px-1.5 py-0.5 rounded text-xs font-mono">demo123</code>
-              </p>
-            </div>
 
             {/* Divider */}
             <div className="relative mb-6">

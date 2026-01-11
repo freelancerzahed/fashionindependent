@@ -41,6 +41,8 @@ export interface User {
   name: string
   role: "backer" | "creator" | "admin"
   avatar?: string
+  phone?: string
+  address?: string
   createdAt: Date
 }
 

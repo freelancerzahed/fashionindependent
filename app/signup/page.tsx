@@ -64,18 +64,13 @@ export default function SignupPage() {
             <div className="max-w-md mx-auto bg-white rounded-lg p-8">
               {/* Header with sign in link */}
               <div className="text-center mb-8">
-                <div className="flex-clumn justify-between items-start mb-4">
-                  <div className="flex-1">  <h1 className="text-3xl font-bold flex-1">Become a Member</h1></div>
-                
-                  <div className="flex-1 text-right">
-                    <p className="text-sm text-neutral-600">
-                      Existing members{" "}
-                      <Link href="/login" className="text-blue-600 hover:underline">
-                        sign in here
-                      </Link>
-                    </p>
-                  </div>
-                </div>
+                <h1 className="text-3xl font-bold mb-4">Become a Member</h1>
+                <p className="text-sm text-neutral-600 mb-2">
+                  Existing members{" "}
+                  <Link href="/login" className="text-blue-600 hover:underline">
+                    sign in here
+                  </Link>
+                </p>
                 <p className="text-neutral-600 mt-2">Join The Fashion Independent community</p>
               </div>
 

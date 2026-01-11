@@ -108,7 +108,8 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
         const previewUrl = reader.result as string
         const newImage: ProductImage = {
           id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          url: previewUrl,
+          file: file, // Store the actual file object
+          preview: previewUrl, // Store preview for display
           type,
           uploadedAt: new Date().toISOString(),
         }
@@ -200,16 +201,18 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
       newErrors.sizes = "At least one size is required"
     }
 
-    const frontImage = formData.productImages.find((img) => img.type === "front")
-    const backImage = formData.productImages.find((img) => img.type === "back")
-
-    if (!frontImage || !backImage) {
-      newErrors.productImages = "Both front and back images are required"
-    }
-
-    if (!formData.techPackFile) {
-      newErrors.techPack = "Tech pack PDF is required"
-    }
+    // NOTE: File uploads (images and tech pack) are now optional
+    // They can be added after campaign creation via a separate file upload API
+    // const frontImage = formData.productImages.find((img) => img.type === "front")
+    // const backImage = formData.productImages.find((img) => img.type === "back")
+    //
+    // if (!frontImage || !backImage) {
+    //   newErrors.productImages = "Both front and back images are required"
+    // }
+    //
+    // if (!formData.techPackFile) {
+    //   newErrors.techPack = "Tech pack PDF is required"
+    // }
 
     if (formData.projectDuration < 30 || formData.projectDuration > 60) {
       newErrors.projectDuration = "Project duration must be between 30 and 60 days"
