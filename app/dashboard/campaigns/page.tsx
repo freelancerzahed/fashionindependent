@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Edit2, Plus, CheckCircle, Clock, Users, Zap, Target, Flame, X, Save, Upload, FileText, Download } from "lucide-react"
+import { Edit2, Plus, CheckCircle, Clock, Users, Zap, Target, Flame, X, Save, Upload, FileText, Download, RefreshCw, AlertCircle, Loader } from "lucide-react"
 import { BACKEND_URL } from "@/config"
 
 export default function CampaignsPage() {
@@ -17,9 +17,11 @@ export default function CampaignsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [viewingCampaignId, setViewingCampaignId] = useState<string | null>(null)
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [editFormData, setEditFormData] = useState({
     title: "",
     description: "",
@@ -31,14 +33,18 @@ export default function CampaignsPage() {
     techPackUrl: "",
     sizes: [] as string[],
     colors: [] as string[],
+    status: "draft" as "draft" | "live",
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageBackPreview, setImageBackPreview] = useState<string | null>(null)
+  const [frontImageFile, setFrontImageFile] = useState<File | null>(null)
+  const [backImageFile, setBackImageFile] = useState<File | null>(null)
   const [techPackFile, setTechPackFile] = useState<File | null>(null)
-  // Fetch campaigns from API on mount
-  useEffect(() => {
-    fetchCampaigns()
-  }, [])
+  const [expandedSections, setExpandedSections] = useState({
+    sizes: false,
+    colors: false,
+    techPack: false,
+  })
 
   // Helper function to get authorization token
   const getAuthToken = () => {
@@ -46,10 +52,10 @@ export default function CampaignsPage() {
     return token
   }
 
-  // Fetch campaigns from backend
-  const fetchCampaigns = async () => {
+  // Fetch campaigns from backend with useCallback
+  const fetchCampaigns = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       setError(null)
       const token = getAuthToken()
 
@@ -74,7 +80,6 @@ export default function CampaignsPage() {
           "Content-Type": "application/json",
           "Accept": "application/json",
         },
-        credentials: "include",
       })
 
       if (!response.ok) {
@@ -97,6 +102,8 @@ export default function CampaignsPage() {
       
       if (data.status && data.campaigns) {
         let campaignsList = Array.isArray(data.campaigns.data) ? data.campaigns.data : [data.campaigns]
+        
+        console.log('Raw campaigns from API:', campaignsList.map((c: any) => ({ id: c.id, title: c.title, status: c.status })))
         
         // Normalize campaign data - ensure sizes and colors are arrays
         campaignsList = campaignsList.map((campaign: any) => {
@@ -124,6 +131,7 @@ export default function CampaignsPage() {
           return normalizedCampaign
         })
         
+        console.log('Normalized campaigns:', campaignsList.map((c: any) => ({ id: c.id, title: c.title, status: c.status })))
         setCampaigns(campaignsList)
       } else {
         setCampaigns([])
@@ -133,9 +141,34 @@ export default function CampaignsPage() {
       setError(errorMessage)
       setCampaigns([])
     } finally {
+      setLastUpdated(new Date())
       setLoading(false)
     }
-  }
+  }, [])
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchCampaigns(true)
+  }, [fetchCampaigns])
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    let isMounted = true
+    let refreshTimer: NodeJS.Timeout
+
+    const autoRefresh = () => {
+      if (isMounted && !editingCampaignId) {
+        fetchCampaigns(false)
+      }
+    }
+
+    refreshTimer = setInterval(autoRefresh, 30000) // 30 seconds
+
+    return () => {
+      isMounted = false
+      clearInterval(refreshTimer)
+    }
+  }, [fetchCampaigns, editingCampaignId])
 
   // Helper function to calculate campaign health
   const calculateCampaignHealth = (funded: number, goal: number, daysLeft: number, backers: number) => {
@@ -162,14 +195,20 @@ export default function CampaignsPage() {
 
   // Helper function to filter campaigns
   const filteredCampaigns = campaigns.filter((campaign) => {
-    if (campaignFilter === "active") return campaign.status === "active"
+    if (campaignFilter === "active") return campaign.status === "live"
     if (campaignFilter === "completed") return campaign.status === "completed"
+    if (campaignFilter === "draft") return campaign.status === "draft"
     return true
   })
 
   // Handle Edit Campaign
   const handleEditCampaign = (campaign: any) => {
     setEditingCampaignId(campaign.id)
+    
+    // Reset file states
+    setFrontImageFile(null)
+    setBackImageFile(null)
+    setTechPackFile(null)
     
     // Ensure sizes is an array
     let sizesArray: string[] = []
@@ -209,13 +248,13 @@ export default function CampaignsPage() {
     // Get tech pack URL - convert to API route format if needed
     let techPackUrl = ""
     // Try both field names (camelCase and snake_case)
-    const techPackFile = campaign.techPackUrl || campaign.tech_pack_file
-    if (techPackFile) {
+    const techPackFileField = campaign.techPackUrl || campaign.tech_pack_file
+    if (techPackFileField) {
       // If it's already a full path like campaigns/tech-packs/file.pdf, use API route
-      if (!techPackFile.startsWith("/api")) {
-        techPackUrl = `/api/storage/${techPackFile}`
+      if (!techPackFileField.startsWith("/api")) {
+        techPackUrl = `/api/storage/${techPackFileField}`
       } else {
-        techPackUrl = techPackFile
+        techPackUrl = techPackFileField
       }
     }
     
@@ -230,21 +269,21 @@ export default function CampaignsPage() {
       techPackUrl: techPackUrl,
       sizes: sizesArray,
       colors: colorsArray,
+      status: campaign.status === "live" ? "live" : "draft",
     })
     setImagePreview(campaign.image || frontImageUrl || null)
     setImageBackPreview(campaign.imageBack || backImageUrl || null)
-    setTechPackFile(null)
   }
 
   // Handle Image Upload (Front)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setFrontImageFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         const result = reader.result as string
         setImagePreview(result)
-        setEditFormData({ ...editFormData, image: result })
       }
       reader.readAsDataURL(file)
     }
@@ -254,11 +293,11 @@ export default function CampaignsPage() {
   const handleImageBackUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setBackImageFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         const result = reader.result as string
         setImageBackPreview(result)
-        setEditFormData({ ...editFormData, imageBack: result })
       }
       reader.readAsDataURL(file)
     }
@@ -274,7 +313,7 @@ export default function CampaignsPage() {
   }
 
   // Save Campaign Changes
-  const handleSaveCampaign = async () => {
+  const handleSaveCampaign = async (isDraft: boolean = true) => {
     try {
       const token = getAuthToken()
       if (!token) {
@@ -282,7 +321,7 @@ export default function CampaignsPage() {
         return
       }
 
-      // Prepare update data
+      // First, update campaign metadata
       const updateData = {
         title: editFormData.title,
         description: editFormData.description,
@@ -290,10 +329,12 @@ export default function CampaignsPage() {
         product_name: editFormData.title,
         product_description: editFormData.description,
         days_active: editFormData.daysLeft,
-        category: editFormData.category,
         sizes: editFormData.sizes,
         colors: editFormData.colors,
+        status: isDraft ? "draft" : "live"
       }
+
+      console.log('Sending update request:', { campaignId: editingCampaignId, isDraft, data: updateData })
 
       const response = await fetch(`${BACKEND_URL}/campaign/${editingCampaignId}`, {
         method: "PUT",
@@ -304,9 +345,70 @@ export default function CampaignsPage() {
         body: JSON.stringify(updateData),
       })
 
+      const responseData = await response.json()
+      console.log('Update response:', responseData)
+
       if (!response.ok) {
-        const errorData = await response.text()
-        throw new Error(`Failed to update campaign: ${response.status}`)
+        throw new Error(responseData.message || responseData.error || `Failed to update campaign: ${response.status}`)
+      }
+
+      console.log('Campaign metadata updated successfully')
+
+      // Upload images if any new ones were selected
+      if (frontImageFile || backImageFile || techPackFile) {
+        const formData = new FormData()
+        
+        const imageMetadata: any[] = []
+        let fileIndex = 0
+        
+        // Add front image if selected
+        if (frontImageFile) {
+          formData.append('product_images[]', frontImageFile)
+          imageMetadata.push({
+            fileIndex,
+            type: 'front',
+            name: frontImageFile.name
+          })
+          fileIndex++
+        }
+        
+        // Add back image if selected
+        if (backImageFile) {
+          formData.append('product_images[]', backImageFile)
+          imageMetadata.push({
+            fileIndex,
+            type: 'back',
+            name: backImageFile.name
+          })
+          fileIndex++
+        }
+        
+        // Add image metadata
+        if (imageMetadata.length > 0) {
+          formData.append('image_metadata', JSON.stringify(imageMetadata))
+        }
+        
+        // Add tech pack if selected
+        if (techPackFile) {
+          formData.append('tech_pack_file', techPackFile)
+        }
+
+        console.log('Uploading files:', { hasImages: imageMetadata.length > 0, hasTechPack: !!techPackFile })
+
+        const uploadResponse = await fetch(`${BACKEND_URL}/campaign/${editingCampaignId}/upload-files`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+          body: formData,
+        })
+
+        const uploadData = await uploadResponse.json()
+        console.log('File upload response:', uploadData)
+
+        if (!uploadResponse.ok) {
+          throw new Error(uploadData.message || `Failed to upload files: ${uploadResponse.status}`)
+        }
       }
 
       // Refresh campaigns list
@@ -315,6 +417,8 @@ export default function CampaignsPage() {
       setEditingCampaignId(null)
       setImagePreview(null)
       setImageBackPreview(null)
+      setFrontImageFile(null)
+      setBackImageFile(null)
       setTechPackFile(null)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
@@ -324,9 +428,65 @@ export default function CampaignsPage() {
     }
   }
 
+  // Handle Publish Campaign
+  const handlePublishCampaign = async (campaignId: string) => {
+    try {
+      const token = getAuthToken()
+      if (!token) {
+        setError("Not authenticated")
+        return
+      }
+
+      const response = await fetch(`${BACKEND_URL}/campaign/${campaignId}/launch`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      const responseData = await response.json()
+      console.log('Campaign launch response:', responseData)
+
+      if (!response.ok) {
+        throw new Error(responseData.message || `Failed to publish campaign: ${response.status}`)
+      }
+
+      console.log('Campaign published successfully:', responseData.campaign)
+      
+      // Refresh campaigns list
+      await fetchCampaigns()
+      
+      // Refresh the edit form with updated campaign data
+      if (editingCampaignId) {
+        const response = await fetch(`${BACKEND_URL}/campaign/${editingCampaignId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.status && data.campaign) {
+            handleEditCampaign(data.campaign)
+            console.log('Edit form refreshed with updated campaign data')
+          }
+        }
+      }
+      
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      console.error("Error publishing campaign:", err)
+      setError(err instanceof Error ? err.message : "Failed to publish campaign")
+    }
+  }
+
   // Get campaign for viewing
   const viewingCampaign = viewingCampaignId ? campaigns.find((c) => c.id === viewingCampaignId) : null
-  const activeCampaignData = campaigns.find((c) => c.status === "active")
+  const activeCampaignData = campaigns.find((c) => c.status === "live")
 
   // Show loading state
   if (loading) {
@@ -404,13 +564,34 @@ export default function CampaignsPage() {
 
   return (
     <div className="space-y-8">
+      {/* Error Alert */}
       {error && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
-          {error}
-        </div>
+        <Card className="p-4 border border-red-200 bg-red-50">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-red-900">Error Loading Campaigns</p>
+              <p className="text-sm text-red-800 mt-1">{error}</p>
+            </div>
+            <button
+              onClick={() => fetchCampaigns(true)}
+              className="text-sm font-medium text-red-600 hover:text-red-700 whitespace-nowrap"
+            >
+              Retry
+            </button>
+          </div>
+        </Card>
       )}
 
-      {/* View Campaign Modal */}
+      {/* Loading Spinner */}
+      {loading && campaigns.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-neutral-600">Loading campaigns...</p>
+        </Card>
+      ) : (
+        <>
+          {/* View Campaign Modal */}
       {viewingCampaign && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -476,12 +657,27 @@ export default function CampaignsPage() {
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">Edit Campaign</h2>
-                <button onClick={() => setEditingCampaignId(null)} className="text-neutral-400 hover:text-neutral-600">
+                <button onClick={() => {
+                  setEditingCampaignId(null)
+                  setImagePreview(null)
+                  setImageBackPreview(null)
+                  setFrontImageFile(null)
+                  setBackImageFile(null)
+                  setTechPackFile(null)
+                }} className="text-neutral-400 hover:text-neutral-600">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
               <div className="space-y-6 mb-6">
+                {/* Campaign Status - Read Only */}
+                <div>
+                  <Label className="font-semibold mb-2 block">Campaign Status</Label>
+                  <div className="bg-neutral-100 p-3 rounded-lg border border-neutral-200">
+                    <p className="text-sm font-semibold capitalize">{editFormData.status}</p>
+                  </div>
+                </div>
+
                 {/* Campaign Title */}
                 <div>
                   <Label className="font-semibold mb-2 block">Campaign Title</Label>
@@ -585,31 +781,64 @@ export default function CampaignsPage() {
                 </div>
 
                 {/* Available Sizes */}
-                <div>
-                  <Label className="font-semibold mb-2 block">Available Sizes</Label>
-                  <Input
-                    value={editFormData.sizes.join(", ")}
-                    onChange={(e) => setEditFormData({ ...editFormData, sizes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                    placeholder="e.g., XS, S, M, L, XL, 2XL (comma-separated)"
-                  />
-                  <p className="text-xs text-neutral-500 mt-1">Enter sizes separated by commas</p>
+                <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedSections({ ...expandedSections, sizes: !expandedSections.sizes })}
+                    className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between font-semibold text-neutral-900 transition-colors"
+                  >
+                    <span>Available Sizes</span>
+                    <span className={`transform transition-transform ${expandedSections.sizes ? "rotate-180" : ""}`}>
+                      ▼
+                    </span>
+                  </button>
+                  {expandedSections.sizes && (
+                    <div className="px-4 py-3 bg-white border-t border-neutral-200">
+                      <Input
+                        value={editFormData.sizes.join(", ")}
+                        onChange={(e) => setEditFormData({ ...editFormData, sizes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                        placeholder="e.g., XS, S, M, L, XL, 2XL (comma-separated)"
+                      />
+                      <p className="text-xs text-neutral-500 mt-2">Enter sizes separated by commas</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Available Colors */}
-                <div>
-                  <Label className="font-semibold mb-2 block">Available Colors</Label>
-                  <Input
-                    value={editFormData.colors.join(", ")}
-                    onChange={(e) => setEditFormData({ ...editFormData, colors: e.target.value.split(",").map((c) => c.trim()).filter(Boolean) })}
-                    placeholder="e.g., Black, White, Navy, Red (comma-separated)"
-                  />
-                  <p className="text-xs text-neutral-500 mt-1">Enter colors separated by commas</p>
+                <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedSections({ ...expandedSections, colors: !expandedSections.colors })}
+                    className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between font-semibold text-neutral-900 transition-colors"
+                  >
+                    <span>Available Colors</span>
+                    <span className={`transform transition-transform ${expandedSections.colors ? "rotate-180" : ""}`}>
+                      ▼
+                    </span>
+                  </button>
+                  {expandedSections.colors && (
+                    <div className="px-4 py-3 bg-white border-t border-neutral-200">
+                      <Input
+                        value={editFormData.colors.join(", ")}
+                        onChange={(e) => setEditFormData({ ...editFormData, colors: e.target.value.split(",").map((c) => c.trim()).filter(Boolean) })}
+                        placeholder="e.g., Black, White, Navy, Red (comma-separated)"
+                      />
+                      <p className="text-xs text-neutral-500 mt-2">Enter colors separated by commas</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tech Pack Upload */}
-                <div>
-                  <Label className="font-semibold mb-2 block">Tech Pack (Optional)</Label>
-                  <div className="space-y-3">
+                <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setExpandedSections({ ...expandedSections, techPack: !expandedSections.techPack })}
+                    className="w-full px-4 py-3 bg-neutral-50 hover:bg-neutral-100 flex items-center justify-between font-semibold text-neutral-900 transition-colors"
+                  >
+                    <span>Tech Pack (Optional)</span>
+                    <span className={`transform transition-transform ${expandedSections.techPack ? "rotate-180" : ""}`}>
+                      ▼
+                    </span>
+                  </button>
+                  {expandedSections.techPack && (
+                    <div className="px-4 py-3 bg-white border-t border-neutral-200 space-y-3">
                     <div className="flex items-center gap-4">
                       <div className="flex-1">
                         <label className="flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-lg p-4 hover:border-blue-500 cursor-pointer transition-all">
@@ -662,8 +891,9 @@ export default function CampaignsPage() {
                         </button>
                       </div>
                     )}
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-2">Upload PDF file with technical specifications</p>
+                    <p className="text-xs text-neutral-500">Upload PDF file with technical specifications</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -674,11 +904,22 @@ export default function CampaignsPage() {
               )}
 
               <div className="flex gap-3 pt-4 border-t">
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleSaveCampaign}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleSaveCampaign(false)}>
+                  <Flame className="w-4 h-4 mr-2" />
+                  Publish
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => setEditingCampaignId(null)}>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => handleSaveCampaign(true)}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save as Draft
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => {
+                  setEditingCampaignId(null)
+                  setImagePreview(null)
+                  setImageBackPreview(null)
+                  setFrontImageFile(null)
+                  setBackImageFile(null)
+                  setTechPackFile(null)
+                }}>
                   Cancel
                 </Button>
               </div>
@@ -693,54 +934,237 @@ export default function CampaignsPage() {
           <h2 className="text-3xl font-bold">Active Campaign</h2>
         </div>
         {activeCampaignData ? (
-          <div className="space-y-6">
-            {/* Health Score Badge and Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="p-4">
-                <p className="text-sm text-neutral-600 mb-1">Funding Goal</p>
-                <p className="text-2xl font-bold mb-2">${activeCampaignData.funding_goal?.toLocaleString() || "0"}</p>
-                <p className="text-xs text-neutral-500">Campaign target</p>
-              </Card>
-
-              <Card className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="w-4 h-4 text-orange-500" />
-                  <p className="text-sm text-neutral-600">Time Limit</p>
+          <Card className="p-8">
+            <div className="space-y-8">
+              {/* Health Score Badge and Quick Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700 font-semibold mb-1">Funding Goal</p>
+                  <p className="text-2xl font-bold text-blue-900 mb-2">${activeCampaignData.funding_goal?.toLocaleString() || "0"}</p>
+                  <p className="text-xs text-blue-600">Campaign target</p>
                 </div>
-                <p className="text-3xl font-bold text-orange-600">{activeCampaignData.days_active || 90}</p>
-                <p className="text-xs text-neutral-500">days active</p>
-              </Card>
 
-              <Card className="p-4">
-                <p className="text-sm text-neutral-600 mb-1">Status</p>
-                <p className="text-2xl font-bold mb-2 capitalize">{activeCampaignData.status}</p>
-                <p className="text-xs text-neutral-500">{new Date(activeCampaignData.created_at).toLocaleDateString()}</p>
-              </Card>
-            </div>
+                <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-orange-600" />
+                    <p className="text-sm text-orange-700 font-semibold">Time Limit</p>
+                  </div>
+                  <p className="text-3xl font-bold text-orange-600">{activeCampaignData.days_active || 90}</p>
+                  <p className="text-xs text-orange-600">days active</p>
+                </div>
 
-            {/* Main Campaign Details Section */}
-            <Card className="p-6">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold mb-2">{activeCampaignData.title}</h3>
-                <p className="text-neutral-600 mb-4">{activeCampaignData.description}</p>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="text-sm text-green-600 font-semibold capitalize">{activeCampaignData.status} Campaign</span>
+                <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700 font-semibold mb-1">Status</p>
+                  <p className="text-2xl font-bold text-green-900 mb-2 capitalize">{activeCampaignData.status}</p>
+                  <p className="text-xs text-green-600">{new Date(activeCampaignData.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              {saveSuccess && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-semibold flex items-center gap-2 mb-4">
-                  <CheckCircle className="w-4 h-4" /> Changes saved successfully
-                </div>
-              )}
+              {/* Main Campaign Gallery & Details */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Campaign Images Section */}
+              <div className="lg:col-span-2">
+                {activeCampaignData.product_images && Array.isArray(activeCampaignData.product_images) && activeCampaignData.product_images.length > 0 ? (
+                  <div className="space-y-4">
+                    {/* Main Image Display */}
+                    <div className="bg-neutral-100 rounded-xl overflow-hidden border border-neutral-200">
+                      <div className="relative aspect-square w-full flex items-center justify-center">
+                        <img
+                          src={
+                            activeCampaignData.product_images[selectedImageIndex]?.path
+                              ? activeCampaignData.product_images[selectedImageIndex].path.startsWith('/api')
+                                ? activeCampaignData.product_images[selectedImageIndex].path
+                                : `/api/storage/${activeCampaignData.product_images[selectedImageIndex].path}`
+                              : '/placeholder.svg'
+                          }
+                          alt={`Campaign ${activeCampaignData.product_images[selectedImageIndex]?.type || 'image'}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.svg'
+                          }}
+                        />
+                      </div>
+                    </div>
 
-              <Button onClick={() => handleEditCampaign(activeCampaignData)} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white h-11 font-semibold hover:from-blue-700 hover:to-blue-800 rounded-lg">
-                <Edit2 className="w-4 h-4 mr-2" />
-                Edit Campaign
-              </Button>
-            </Card>
-          </div>
+                    {/* Image Thumbnails */}
+                    {activeCampaignData.product_images.length > 1 && (
+                      <div className="flex gap-3">
+                        {activeCampaignData.product_images.map((img: any, idx: number) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedImageIndex(idx)}
+                            className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                              selectedImageIndex === idx
+                                ? 'border-blue-600 ring-2 ring-blue-500'
+                                : 'border-neutral-300 hover:border-neutral-400'
+                            }`}
+                          >
+                            <div className="w-20 h-20 bg-neutral-100 flex items-center justify-center">
+                              <img
+                                src={
+                                  img.path
+                                    ? img.path.startsWith('/api')
+                                      ? img.path
+                                      : `/api/storage/${img.path}`
+                                    : '/placeholder.svg'
+                                }
+                                alt={`Thumbnail ${idx}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder.svg'
+                                }}
+                              />
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                              <div className="bg-black bg-opacity-40 text-white text-xs font-semibold px-2 py-1 rounded capitalize">
+                                {img.type || 'photo'}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Image Info */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-900 font-semibold">
+                        {activeCampaignData.product_images[selectedImageIndex]?.type === 'front' && '👕 Front View'}
+                        {activeCampaignData.product_images[selectedImageIndex]?.type === 'back' && '👔 Back View'}
+                        {!['front', 'back'].includes(activeCampaignData.product_images[selectedImageIndex]?.type) && '🖼️ Campaign Image'}
+                      </p>
+                      {activeCampaignData.product_images[selectedImageIndex]?.name && (
+                        <p className="text-xs text-blue-700 mt-1">
+                          {activeCampaignData.product_images[selectedImageIndex].name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-neutral-100 rounded-xl border-2 border-dashed border-neutral-300 h-96 flex flex-col items-center justify-center text-center">
+                    <div className="text-neutral-400 mb-3">
+                      <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-neutral-600 font-semibold mb-1">No Campaign Images</p>
+                    <p className="text-neutral-500 text-sm">Upload images when editing your campaign</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Campaign Details Section */}
+              <div className="lg:col-span-1">
+                <div className="space-y-6">
+                  {/* Status Badge */}
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                      activeCampaignData.status === 'live'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full mr-2 animate-pulse ${
+                        activeCampaignData.status === 'live' ? 'bg-green-600' : 'bg-blue-600'
+                      }`}></span>
+                      {activeCampaignData.status === 'live' ? '🔴 LIVE' : '📋 DRAFT'}
+                    </span>
+                  </div>
+
+                  {/* Campaign Title */}
+                  <div>
+                    <h1 className="text-3xl font-bold text-neutral-900 mb-2">{activeCampaignData.title}</h1>
+                    <p className="text-neutral-600 text-sm leading-relaxed line-clamp-3">{activeCampaignData.description}</p>
+                  </div>
+
+                  {/* Funding Progress Bar */}
+                  <div className="space-y-3 border-t border-b border-neutral-200 py-4">
+                    <div className="flex justify-between items-baseline">
+                      <p className="text-xs font-semibold text-neutral-500 uppercase">Funding Progress</p>
+                      <p className="text-sm font-bold text-neutral-900">
+                        {activeCampaignData.current_funding ? ((activeCampaignData.current_funding / activeCampaignData.funding_goal) * 100).toFixed(0) : 0}%
+                      </p>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-3 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 rounded-full"
+                        style={{ width: `${Math.min(((activeCampaignData.current_funding || 0) / activeCampaignData.funding_goal) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-neutral-600">
+                      <span>${activeCampaignData.current_funding?.toLocaleString() || "0"} raised</span>
+                      <span>${(activeCampaignData.funding_goal - (activeCampaignData.current_funding || 0)).toLocaleString()} to go</span>
+                    </div>
+                  </div>
+
+                  {/* Performance Metrics */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
+                      <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Backers</p>
+                      <p className="text-xl font-bold text-blue-900">{activeCampaignData.backer_count || 0}</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-200 text-center">
+                      <p className="text-xs text-purple-600 font-semibold uppercase mb-1">Views</p>
+                      <p className="text-xl font-bold text-purple-900">{activeCampaignData.views || 0}</p>
+                    </div>
+                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200 text-center">
+                      <p className="text-xs text-orange-600 font-semibold uppercase mb-1">Conversion</p>
+                      <p className="text-xl font-bold text-orange-900">
+                        {activeCampaignData.views ? ((activeCampaignData.backer_count || 0) / activeCampaignData.views * 100).toFixed(1) : 0}%
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Campaign Details */}
+                  <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200 space-y-2">
+                    <p className="text-xs font-semibold text-neutral-600 uppercase mb-3">Campaign Details</p>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-neutral-600">Goal Amount</span>
+                      <span className="font-bold text-neutral-900">${activeCampaignData.funding_goal?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-neutral-600">Days Active</span>
+                      <span className="font-bold text-neutral-900">{activeCampaignData.days_active || 90} days</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-neutral-600">Status</span>
+                      <span className="font-bold text-neutral-900 capitalize">{activeCampaignData.status}</span>
+                    </div>
+                  </div>
+
+                  {/* Success Message */}
+                  {saveSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs font-semibold flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Changes saved successfully
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={() => {
+                        setSelectedImageIndex(0)
+                        handleEditCampaign(activeCampaignData)
+                      }}
+                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white h-12 font-semibold hover:from-blue-700 hover:to-blue-800 rounded-lg transition-all"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit Campaign
+                    </Button>
+                    {activeCampaignData.status === 'live' && (
+                      <Link href={`/campaign/${activeCampaignData.id}`}>
+                        <Button 
+                          variant="outline"
+                          className="w-full h-11 font-semibold rounded-lg transition-all hover:bg-blue-50 hover:border-blue-300"
+                        >
+                          👁️ View Live Campaign
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </Card>
         ) : (
           <Card className="p-12 text-center border-2 border-dashed border-neutral-300 bg-neutral-50">
             <Flame className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
@@ -758,8 +1182,13 @@ export default function CampaignsPage() {
       {/* All Campaigns Section */}
       <div className="space-y-6 pt-8 border-t border-neutral-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h2 className="text-2xl font-bold">All Campaigns</h2>
-          <div className="flex gap-2">
+          <div>
+            <h2 className="text-2xl font-bold">All Campaigns</h2>
+            {lastUpdated && (
+              <p className="text-xs text-neutral-500 mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</p>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant={campaignFilter === "all" ? "default" : "outline"}
               size="sm"
@@ -783,6 +1212,24 @@ export default function CampaignsPage() {
               className="rounded-lg"
             >
               Completed
+            </Button>
+            <Button
+              variant={campaignFilter === "draft" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCampaignFilter("draft")}
+              className="rounded-lg"
+            >
+              Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2 rounded-lg" 
+              onClick={() => fetchCampaigns(true)} 
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
             </Button>
             <Link href="/launch-campaign">
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 rounded-lg">
@@ -840,16 +1287,16 @@ export default function CampaignsPage() {
                           </div>
                         </>
                       )}
-                      <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold ${campaign.status === "active" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
-                        {campaign.status === "active" ? "Active" : "Draft"}
+                      <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold ${campaign.status === "live" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+                        {campaign.status === "live" ? "Live" : "Draft"}
                       </div>
                     </div>
                     <div className="flex-1 p-6 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center gap-2 mb-3">
                           <h3 className="text-xl font-bold">{campaign.title}</h3>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${campaign.status === "active" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
-                            {campaign.status === "active" ? "Active" : "Draft"}
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${campaign.status === "live" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
+                            {campaign.status === "live" ? "Live" : "Draft"}
                           </span>
                         </div>
 
@@ -887,6 +1334,11 @@ export default function CampaignsPage() {
                         <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setViewingCampaignId(campaign.id)}>
                           View Campaign
                         </Button>
+                        {campaign.status === "draft" && (
+                          <Button className="flex-1 bg-green-600 hover:bg-green-700 rounded-lg" onClick={() => handlePublishCampaign(campaign.id)}>
+                            <Flame className="w-4 h-4 mr-1" /> Publish
+                          </Button>
+                        )}
                         <Button variant="outline" className="rounded-lg" onClick={() => handleEditCampaign(campaign)}>
                           <Edit2 className="w-4 h-4 mr-1" /> Edit
                         </Button>
@@ -910,6 +1362,8 @@ export default function CampaignsPage() {
           </Card>
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

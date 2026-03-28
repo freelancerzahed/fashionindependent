@@ -7,6 +7,7 @@ import { BACKEND_URL } from "@/config"
 
 interface AuthContextType {
   user: User | null
+  token: string | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name: string, role: "backer" | "creator") => Promise<void>
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
@@ -24,9 +26,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMounted(true)
     try {
       const storedUser = localStorage.getItem("user")
-      const token = localStorage.getItem("auth_token")
-      if (storedUser && token) {
+      const storedToken = localStorage.getItem("auth_token")
+      if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser))
+        setToken(storedToken)
       }
     } catch (error) {
       console.error("[Auth] Failed to load user from localStorage:", error)
@@ -79,8 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("[Auth] User logged in:", mockUser)
       setUser(mockUser)
+      const authToken = data.token || data.access_token || data.data?.token || ""
+      setToken(authToken)
       localStorage.setItem("user", JSON.stringify(mockUser))
-      localStorage.setItem("auth_token", data.token || data.access_token || data.data?.token || "")
+      localStorage.setItem("auth_token", authToken)
 
       return
     } catch (error) {
@@ -147,8 +152,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("[Auth] User signed up:", newUser)
       setUser(newUser)
+      const authToken = data.token || data.access_token || data.data?.token || ""
+      setToken(authToken)
       localStorage.setItem("user", JSON.stringify(newUser))
-      localStorage.setItem("auth_token", data.token || data.access_token || data.data?.token || "")
+      localStorage.setItem("auth_token", authToken)
 
       return
     } catch (error) {
@@ -162,19 +169,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null)
+    setToken(null)
     localStorage.removeItem("user")
     localStorage.removeItem("auth_token")
   }
 
   if (!mounted) {
     return (
-      <AuthContext.Provider value={{ user: null, isLoading: true, login, signup, logout }}>
+      <AuthContext.Provider value={{ user: null, token: null, isLoading: true, login, signup, logout }}>
         {children}
       </AuthContext.Provider>
     )
   }
 
-  return <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, token, isLoading, login, signup, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

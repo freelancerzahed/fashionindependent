@@ -12,14 +12,18 @@ interface CampaignCardProps {
 
 export default function CampaignCard({ campaign }: CampaignCardProps) {
   // State for handling hydration issues
-  const [fundedPercentage, setFundedPercentage] = useState(0);
+  const [upvotePercentage, setUpvotePercentage] = useState(0);
   const [timeDisplay, setTimeDisplay] = useState<string>("");
   const [backersCount, setBackersCount] = useState<string>("--");
+  const [upvoteCount, setUpvoteCount] = useState<string>("--");
+  const [upvoteGoalFormatted, setUpvoteGoalFormatted] = useState<string>("--");
   
   useEffect(() => {
-    // Calculate funded percentage on client side only to prevent hydration mismatch
-    const percentage = Math.round((campaign.fundedAmount / campaign.fundingGoal) * 100);
-    setFundedPercentage(percentage);
+    // Calculate upvote percentage on client side only to prevent hydration mismatch
+    const upvoteGoal = campaign.upvoteGoal || 1;
+    const upvoteVotes = campaign.upvoteCount || 0;
+    const percentage = Math.round((upvoteVotes / upvoteGoal) * 100);
+    setUpvotePercentage(percentage);
     
     // Calculate time values on client side only to prevent hydration mismatch
     const totalDays = campaign.daysRemaining;
@@ -30,16 +34,22 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
 
     // Set backers count on client side to prevent hydration mismatch
     setBackersCount(campaign.backers.toString());
-  }, [campaign.fundedAmount, campaign.fundingGoal, campaign.daysRemaining, campaign.backers])
+    
+    // Set upvote count on client side to prevent hydration mismatch
+    setUpvoteCount((campaign.upvoteCount || 0).toLocaleString());
+    setUpvoteGoalFormatted((campaign.upvoteGoal || 0).toLocaleString());
+  }, [campaign.upvoteCount, campaign.upvoteGoal, campaign.daysRemaining, campaign.backers])
 
   return (
     <Card className="overflow-hidden group">
       <div className="aspect-[3/4] bg-neutral-200 relative overflow-hidden">
         <Image
-          src={campaign.image || "/placeholder.svg"}
+          src={campaign.image && typeof campaign.image === 'string' && campaign.image.trim() ? campaign.image : "/placeholder.svg"}
           alt={campaign.title}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={() => {}}
+          priority={false}
         />
       </div>
       <CardContent className="p-4">
@@ -55,17 +65,17 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
           <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-neutral-900 transition-all"
-              style={{ width: `${Math.min(fundedPercentage, 100)}%` }}
+              style={{ width: `${Math.min(upvotePercentage, 100)}%` }}
             />
           </div>
           <div className="flex items-center justify-between mt-2">
-            <p className="text-xs text-neutral-600">{fundedPercentage}% funded</p>
-            <p className="text-xs text-neutral-600">{backersCount} backers</p>
+            <p className="text-xs text-neutral-600">{upvotePercentage}% backed</p>
+            <p className="text-xs text-neutral-600">{backersCount} donors</p>
           </div>
         </div>
         <p className="text-sm font-semibold" suppressHydrationWarning>
-          ${campaign.fundedAmount.toLocaleString()}{" "}
-          <span className="text-neutral-600 font-normal">of ${campaign.fundingGoal.toLocaleString()}</span>
+          {upvoteCount}{" "}
+          <span className="text-neutral-600 font-normal">/ {upvoteGoalFormatted} upvotes</span>
         </p>
       </CardContent>
       <CardFooter className="p-4 pt-0">

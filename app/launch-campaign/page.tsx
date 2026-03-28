@@ -24,8 +24,6 @@ export default function LaunchCampaignPage() {
     password: "",
   })
   const [disclosures, setDisclosures] = useState({
-    deliveryObligation: false,
-    techPackConsent: false,
     collaborationAgreement: false,
     termsAndConditions: false,
     ageConfirmation: false,
@@ -384,8 +382,6 @@ export default function LaunchCampaignPage() {
 
   const handleSubmit = () => {
     if (
-      !disclosures.deliveryObligation ||
-      !disclosures.techPackConsent ||
       !disclosures.collaborationAgreement ||
       !disclosures.termsAndConditions ||
       !disclosures.ageConfirmation
@@ -557,28 +553,6 @@ export default function LaunchCampaignPage() {
               <ProgressBar currentStep={3} />
 
               <div className="space-y-5">
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="delivery"
-                    checked={disclosures.deliveryObligation}
-                    onCheckedChange={(checked) => handleDisclosureChange("deliveryObligation", checked as boolean)}
-                  />
-                  <Label htmlFor="delivery" className="text-base cursor-pointer pt-0.5">
-                    I affirm that I will deliver the finished goods for this campaign within the stated timeframe and understand that failure to meet this obligation may result in rights forfeiture or formal resolution.
-                  </Label>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="techpack-consent"
-                    checked={disclosures.techPackConsent}
-                    onCheckedChange={(checked) => handleDisclosureChange("techPackConsent", checked as boolean)}
-                  />
-                  <Label htmlFor="techpack-consent" className="text-base cursor-pointer pt-0.5">
-                    I affirm that I have a factory-ready tech pack for the product herein. In the absence of such documentation, I consent to purchase a tech pack from the company and authorize the cost to be deducted from my campaign earnings.
-                  </Label>
-                </div>
-
                 <div className="flex items-start space-x-3">
                   <Checkbox
                     id="collaboration"

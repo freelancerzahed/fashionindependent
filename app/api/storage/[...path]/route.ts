@@ -13,8 +13,8 @@ export async function GET(
     console.log(`🔄 Reading file from storage: ${pathString}`)
     
     // Construct file path to storage directory
-    // Storage is at: D:\laragon\www\mirrormefashion\storage\app\public\
-    const filePath = `D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\${pathString}`
+    // Storage is at: C:\laragon\www\mirrormefashion\storage\app\public\
+    const filePath = `C:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\${pathString}`
     
     console.log(`📁 File path: ${filePath}`)
     

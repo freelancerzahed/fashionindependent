@@ -11,6 +11,8 @@ export interface Campaign {
   fundedAmount: number
   backers: number
   daysRemaining: number
+  upvoteGoal: number
+  upvoteCount: number
   status: "active" | "closing-soon" | "funded" | "ended"
   pledgeOptions: PledgeOption[]
   createdAt: Date

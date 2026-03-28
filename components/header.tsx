@@ -8,6 +8,7 @@ import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { ProfileDropdown } from "@/components/profile-dropdown"
+import { CategoryMenu } from "@/components/category-menu"
 
 export function Header() {
   const router = useRouter()
@@ -31,34 +32,6 @@ export function Header() {
   const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + "/")
   }
-
-  const womenswearCategories = [
-    "Tops",
-    "Bottoms",
-    "Sweaters & Cardigans",
-    "Dresses",
-    "Coats & Jackets",
-    "Jumpsuits & Rompers",
-    "Lingerie & Underwear",
-    "Accessories",
-    "Shoes",
-    "Swimwear",
-  ]
-
-  const menswearCategories = ["Shirts", "Bottoms", "Coats & Jackets", "Suits", "Underwear", "Accessories", "Shoes"]
-
-  const kidswearCategories = [
-    "Tops",
-    "Bottoms",
-    "Sweaters & Cardigans",
-    "Dresses",
-    "Coats & Jackets",
-    "Jumpsuits & Rompers",
-    "Lingerie & Underwear",
-    "Accessories",
-    "Shoes",
-    "Swimwear",
-  ]
 
   return (
     <header className="border-b bg-white sticky top-0 z-50">
@@ -138,79 +111,8 @@ export function Header() {
             </div>
           </div>
 
-          <div className="border-t py-3 bg-white">
-            <div className="flex items-center gap-8">
-              {/* Womenswear Dropdown */}
-              <div className="relative group">
-                <button className={`text-sm font-medium transition-all duration-200 ease-in-out ${isActive("/category/womenswear") ? "text-black font-semibold" : "text-neutral-600 hover:text-black"}`}>
-                  Womenswear
-                </button>
-                <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
-                  <div className="bg-white border border-neutral-200 rounded-lg shadow-lg p-4 w-[400px] grid grid-cols-2 gap-3">
-                    {womenswearCategories.map((category) => (
-                      <Link
-                        key={category}
-                        href={`/category/womenswear?sub=${category.toLowerCase().replace(/\s+/g, "-")}`}
-                        className="text-sm text-neutral-900 hover:text-black hover:bg-neutral-100 px-2 py-1 rounded transition-all duration-150 ease-in-out block"
-                      >
-                        {category}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Menswear Dropdown */}
-              <div className="relative group">
-                <button className={`text-sm font-medium transition-all duration-200 ease-in-out ${isActive("/category/menswear") ? "text-black font-semibold" : "text-neutral-600 hover:text-black"}`}>
-                  Menswear
-                </button>
-                <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
-                  <div className="bg-white border border-neutral-200 rounded-lg shadow-lg p-4 w-[400px] grid grid-cols-2 gap-3">
-                    {menswearCategories.map((category) => (
-                      <Link
-                        key={category}
-                        href={`/category/menswear?sub=${category.toLowerCase().replace(/\s+/g, "-")}`}
-                        className="text-sm text-neutral-900 hover:text-black hover:bg-neutral-100 px-2 py-1 rounded transition-all duration-150 ease-in-out block"
-                      >
-                        {category}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Kidswear Dropdown */}
-              <div className="relative group">
-                <button className={`text-sm font-medium transition-all duration-200 ease-in-out ${isActive("/category/kidswear") ? "text-black font-semibold" : "text-neutral-600 hover:text-black"}`}>
-                  Kidswear
-                </button>
-                <div className="absolute left-0 top-full pt-2 hidden group-hover:block z-50">
-                  <div className="bg-white border border-neutral-200 rounded-lg shadow-lg p-4 w-[400px] grid grid-cols-2 gap-3">
-                    {kidswearCategories.map((category) => (
-                      <Link
-                        key={category}
-                        href={`/category/kidswear?sub=${category.toLowerCase().replace(/\s+/g, "-")}`}
-                        className="text-sm text-neutral-900 hover:text-black hover:bg-neutral-100 px-2 py-1 rounded transition-all duration-150 ease-in-out block"
-                      >
-                        {category}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Wearables Link */}
-              <Link
-                href="/category/wearables"
-                className={`text-sm font-medium transition-all duration-200 ease-in-out ${
-                  isActive("/category/wearables") ? "text-black font-semibold" : "text-neutral-600 hover:text-black"
-                }`}
-              >
-                Wearables
-              </Link>
-            </div>
-          </div>
+          {/* Dynamic Category Menu */}
+          <CategoryMenu />
         </div>
       </div>
     </header>

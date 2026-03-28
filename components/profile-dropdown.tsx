@@ -38,12 +38,20 @@ export function ProfileDropdown() {
     .join("")
     .toUpperCase()
 
+  // Convert avatar path to proxy URL if needed
+  let avatarUrl = null
+  if (user.avatar) {
+    avatarUrl = user.avatar.startsWith('/') || user.avatar.startsWith('http')
+      ? user.avatar
+      : `/api/storage/${user.avatar}`
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="rounded-full hover:opacity-80 transition-opacity">
           <Avatar className="size-8 cursor-pointer">
-            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} alt={user.name} />
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={user.name} />}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </button>

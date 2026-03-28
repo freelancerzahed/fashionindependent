@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
 import { AlertCircle, Upload, X } from "lucide-react"
 import type { ProductImage, ProductSize } from "@/lib/types/campaign"
@@ -24,6 +25,13 @@ export interface CampaignFormData {
   productImages: ProductImage[]
   techPackFile: File | null
   projectDuration: number
+  questionnaire: {
+    previousSalesChannels: string[]
+    existingInventory: string | null
+    manufacturerRestockTime: string | null
+    manufacturingAssistance: string[]
+    businessRegistration: string | null
+  }
 }
 
 export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: CampaignLaunchFormProps) {
@@ -35,7 +43,14 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
     sizes: [{ size: "" }],
     productImages: [],
     techPackFile: null,
-    projectDuration: 30,
+    projectDuration: 7,
+    questionnaire: {
+      previousSalesChannels: [],
+      existingInventory: null,
+      manufacturerRestockTime: null,
+      manufacturingAssistance: [],
+      businessRegistration: null,
+    },
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -171,6 +186,30 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
     })
   }
 
+  const handleQuestionnaireMultiSelect = (field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      questionnaire: {
+        ...prev.questionnaire,
+        [field]: prev.questionnaire[field as keyof typeof prev.questionnaire].includes(value)
+          ? (prev.questionnaire[field as keyof typeof prev.questionnaire] as string[]).filter(
+              (item) => item !== value
+            )
+          : [...(prev.questionnaire[field as keyof typeof prev.questionnaire] as string[]), value],
+      },
+    }))
+  }
+
+  const handleQuestionnaireSingleSelect = (field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      questionnaire: {
+        ...prev.questionnaire,
+        [field]: prev.questionnaire[field as keyof typeof prev.questionnaire] === value ? null : value,
+      },
+    }))
+  }
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
@@ -214,8 +253,8 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
     //   newErrors.techPack = "Tech pack PDF is required"
     // }
 
-    if (formData.projectDuration < 30 || formData.projectDuration > 60) {
-      newErrors.projectDuration = "Project duration must be between 30 and 60 days"
+    if (formData.projectDuration < 7 || formData.projectDuration > 30) {
+      newErrors.projectDuration = "Project duration must be between 7 and 30 days"
     }
 
     setErrors(newErrors)
@@ -480,7 +519,151 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
         {errors.imageUpload && <p className="text-sm text-red-600">{errors.imageUpload}</p>}
       </Card>
 
-      {/* Tech Pack */}
+      {/* Questionnaire */}
+      <Card className="p-6 space-y-8">
+        <div>
+          <h3 className="text-lg font-semibold">Questionnaire</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            Help us understand your business needs to provide better support
+          </p>
+        </div>
+
+        {/* Question 1: Previous Sales Channels */}
+        <div className="border-t pt-6 space-y-4">
+          <p className="font-bold text-neutral-900">
+            I have previously sold this product to customers (check all that apply)
+          </p>
+          <div className="space-y-3 ml-2">
+            {["own_website", "third_party_website", "physical_store", "other"].map((channel) => {
+              const labels: Record<string, string> = {
+                own_website: "On a website I own",
+                third_party_website: "On a third-party website",
+                physical_store: "In a physical store",
+                other: "Other",
+              }
+              return (
+                <div key={channel} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={`sales-channel-${channel}`}
+                    checked={formData.questionnaire.previousSalesChannels.includes(channel)}
+                    onCheckedChange={() => handleQuestionnaireMultiSelect("previousSalesChannels", channel)}
+                  />
+                  <Label htmlFor={`sales-channel-${channel}`} className="text-base cursor-pointer">
+                    {labels[channel]}
+                  </Label>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Question 2: Existing Inventory */}
+        <div className="border-t pt-6 space-y-4">
+          <p className="font-bold text-neutral-900">I have existing inventory</p>
+          <div className="space-y-3 ml-2">
+            {[
+              { id: "inventory_1_50", label: "1 – 50 units" },
+              { id: "inventory_50_200", label: "50 – 200 units" },
+              { id: "inventory_200_500", label: "200 - 500 units" },
+              { id: "inventory_500_plus", label: "500+ units" },
+              { id: "no_inventory", label: "I do not have inventory" },
+            ].map((option) => (
+              <div key={option.id} className="flex items-center space-x-3">
+                <Checkbox
+                  id={option.id}
+                  checked={formData.questionnaire.existingInventory === option.id}
+                  onCheckedChange={() => handleQuestionnaireSingleSelect("existingInventory", option.id)}
+                />
+                <Label htmlFor={option.id} className="text-base cursor-pointer">
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Question 3: Manufacturer Restock Time - Show only if has inventory */}
+        {formData.questionnaire.existingInventory &&
+          formData.questionnaire.existingInventory !== "no_inventory" && (
+            <div className="border-t pt-6 space-y-4 bg-blue-50 p-4 rounded-lg">
+              <p className="font-bold text-neutral-900">
+                I have an existing manufacturer who can restock my inventory in
+              </p>
+              <div className="space-y-3 ml-2">
+                {[
+                  { id: "restock_10", label: "10 days" },
+                  { id: "restock_14", label: "14 days" },
+                  { id: "restock_30", label: "30 days" },
+                  { id: "restock_60", label: "60 days" },
+                  { id: "restock_60_plus", label: "60+ days" },
+                ].map((option) => (
+                  <div key={option.id} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={option.id}
+                      checked={formData.questionnaire.manufacturerRestockTime === option.id}
+                      onCheckedChange={() => handleQuestionnaireSingleSelect("manufacturerRestockTime", option.id)}
+                    />
+                    <Label htmlFor={option.id} className="text-base cursor-pointer">
+                      {option.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        {/* Question 4: Manufacturing Assistance - Show if no inventory or if inventory selected but no manufacturer confirmed */}
+        {(formData.questionnaire.existingInventory === "no_inventory" ||
+          (formData.questionnaire.existingInventory &&
+            formData.questionnaire.existingInventory !== "no_inventory" &&
+            !formData.questionnaire.manufacturerRestockTime)) && (
+          <div className="border-t pt-6 space-y-4 bg-amber-50 p-4 rounded-lg">
+            <p className="font-bold text-neutral-900">
+              I require manufacturing assistance (check all that apply)
+            </p>
+            <div className="space-y-3 ml-2">
+              {[
+                { id: "has_tech_pack", label: "I have a factory ready tech pack" },
+                { id: "has_manufacturer", label: "I have a manufacturing partner" },
+              ].map((option) => (
+                <div key={option.id} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={option.id}
+                    checked={formData.questionnaire.manufacturingAssistance.includes(option.id)}
+                    onCheckedChange={() => handleQuestionnaireMultiSelect("manufacturingAssistance", option.id)}
+                  />
+                  <Label htmlFor={option.id} className="text-base cursor-pointer">
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Question 5: Business Registration */}
+        <div className="border-t pt-6 space-y-4">
+          <p className="font-bold text-neutral-900">My fashion brand is currently registered as a business</p>
+          <div className="space-y-3 ml-2">
+            {[
+              { id: "business_yes", label: "Yes" },
+              { id: "business_no", label: "No" },
+              { id: "business_in_progress", label: "In progress" },
+            ].map((option) => (
+              <div key={option.id} className="flex items-center space-x-3">
+                <Checkbox
+                  id={option.id}
+                  checked={formData.questionnaire.businessRegistration === option.id}
+                  onCheckedChange={() => handleQuestionnaireSingleSelect("businessRegistration", option.id)}
+                />
+                <Label htmlFor={option.id} className="text-base cursor-pointer">
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
       <Card className="p-6 space-y-4">
         <h3 className="text-lg font-semibold">Tech Pack</h3>
         <p className="text-sm text-muted-foreground">Upload a PDF file with technical specifications for your product.</p>
@@ -529,15 +712,15 @@ export function CampaignLaunchForm({ onSubmit, isLoading = false, onBack }: Camp
           <input
             id="duration"
             type="range"
-            min="30"
-            max="60"
+            min="7"
+            max="30"
             value={formData.projectDuration}
             onChange={(e) => handleTextInputChange("projectDuration", e.target.value)}
             className="w-full"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>30 days (minimum)</span>
-            <span>60 days (maximum)</span>
+            <span>7 days (minimum)</span>
+            <span>30 days (maximum)</span>
           </div>
         </div>
         {errors.projectDuration && <p className="text-sm text-red-600">{errors.projectDuration}</p>}

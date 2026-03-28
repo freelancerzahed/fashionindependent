@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Edit2, Plus, X, Loader } from "lucide-react"
+import { DashboardProfileCard } from "@/components/dashboard-profile-card"
+import { ApiDiagnosticsPanel } from "@/components/api-diagnostics-panel"
+import { Edit2, Plus, X, Loader, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react"
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -15,13 +17,19 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [socialLinks, setSocialLinks] = useState(["", "", "", "", ""])
+  const [originalData, setOriginalData] = useState<any>(null)
   const [settingsData, setSettingsData] = useState({
     fullName: user?.name || "",
     email: user?.email || "",
     phone: "",
     mailingAddress: "",
     businessName: "",
+    about: "",
     einNumber: "",
     businessRegistrationNumber: "",
     brandName: "",
@@ -31,79 +39,236 @@ export default function SettingsPage() {
     bankAccountNumber: "",
   })
 
-  // Fetch creator profile data on mount
-  useEffect(() => {
-    const fetchCreatorProfile = async () => {
-      try {
-        setLoading(true)
-        const token = localStorage.getItem("auth_token")
-        
-        if (!token) {
-          setError("Authentication token not found. Please login again.")
-          setLoading(false)
-          return
-        }
-
-        console.log("Fetching creator profile with token:", token?.substring(0, 20) + "...")
-        
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/profile`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        console.log("Creator profile response status:", response.status)
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          console.error("API Error:", errorData)
-          throw new Error(errorData.message || `API Error: ${response.status}`)
-        }
-
-        const data = await response.json()
-        console.log("Creator profile data:", data)
-        
-        if (data.status && data.creator) {
-          const creator = data.creator
-          setSettingsData({
-            fullName: user?.name || "",
-            email: user?.email || "",
-            phone: user?.phone || "",
-            mailingAddress: user?.address || "",
-            businessName: creator.brand_name || "",
-            einNumber: "",
-            businessRegistrationNumber: "",
-            brandName: creator.brand_name || "",
-            website: creator.website || "",
-            jobTitle: creator.job_title || "",
-            bankRoutingNumber: creator.routing_number || "",
-            bankAccountNumber: creator.bank_account || "",
-          })
-        } else {
-          throw new Error(data.message || "Failed to load creator profile")
-        }
-      } catch (err) {
-        console.error("Error fetching creator profile:", err)
-        setError(err instanceof Error ? err.message : "Failed to load settings")
-      } finally {
+  // Fetch creator profile data
+  const fetchCreatorProfile = useCallback(async (showLoadingState = true) => {
+    try {
+      if (showLoadingState) setLoading(true)
+      setError("")
+      const token = localStorage.getItem("auth_token")
+      
+      if (!token) {
+        setError("Authentication token not found. Please login again.")
         setLoading(false)
+        return
+      }
+
+      console.log("Fetching creator profile...")
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/profile`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log("Creator profile response status:", response.status)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("API Error:", errorData)
+        throw new Error(errorData.message || `API Error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log("Creator profile data:", data)
+      
+      if (data.status && data.creator) {
+        const creator = data.creator
+        const newData = {
+          fullName: user?.name || "",
+          email: user?.email || "",
+          phone: user?.phone || "",
+          mailingAddress: user?.address || "",
+          businessName: creator.brand_name || "",
+          about: creator.bio || creator.about || "",
+          einNumber: "",
+          businessRegistrationNumber: "",
+          brandName: creator.brand_name || "",
+          website: creator.website || "",
+          jobTitle: creator.job_title || "",
+          bankRoutingNumber: creator.routing_number || "",
+          bankAccountNumber: creator.bank_account || "",
+        }
+        setSettingsData(newData)
+        setOriginalData(newData)
+        setLastUpdated(new Date())
+        setHasUnsavedChanges(false)
+        console.log("Profile loaded successfully")
+      } else {
+        throw new Error(data.message || "Failed to load creator profile")
+      }
+    } catch (err) {
+      console.error("Error fetching creator profile:", err)
+      setError(err instanceof Error ? err.message : "Failed to load settings")
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.name, user?.email, user?.phone, user?.address])
+
+  // Initial fetch on mount
+  useEffect(() => {
+    if (user) {
+      fetchCreatorProfile()
+    }
+  }, []) // Only run once on mount - empty dependency array
+
+  // Auto-refresh profile every 30 seconds (separate from main fetch)
+  useEffect(() => {
+    // Don't set up auto-refresh while editing
+    if (editingSettings || hasUnsavedChanges) {
+      return
+    }
+
+    let isMounted = true
+    let refreshTimer: NodeJS.Timeout
+
+    const autoRefresh = async () => {
+      if (isMounted && !editingSettings && !hasUnsavedChanges) {
+        try {
+          const token = localStorage.getItem("auth_token")
+          if (!token) return
+
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/profile`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (response.ok && isMounted) {
+            const data = await response.json()
+            if (data.status && data.creator) {
+              const creator = data.creator
+              const newData = {
+                fullName: user?.name || "",
+                email: user?.email || "",
+                phone: user?.phone || "",
+                mailingAddress: user?.address || "",
+                businessName: creator.brand_name || "",
+                about: creator.bio || creator.about || "",
+                einNumber: "",
+                businessRegistrationNumber: "",
+                brandName: creator.brand_name || "",
+                website: creator.website || "",
+                jobTitle: creator.job_title || "",
+                bankRoutingNumber: creator.routing_number || "",
+                bankAccountNumber: creator.bank_account || "",
+              }
+              setSettingsData(newData)
+              setLastUpdated(new Date())
+              console.log("Auto-refresh completed successfully")
+            }
+          }
+        } catch (err) {
+          console.error("Auto-refresh error:", err)
+        }
       }
     }
 
-    fetchCreatorProfile()
-  }, [user])
+    // Set up interval for auto-refresh every 30 seconds
+    refreshTimer = setInterval(autoRefresh, 30000)
+
+    return () => {
+      isMounted = false
+      clearInterval(refreshTimer)
+    }
+  }, [editingSettings, hasUnsavedChanges, user])
 
   const handleSettingsChange = (field: string, value: any) => {
     setSettingsData((prev) => ({
       ...prev,
       [field]: value,
     }))
+    setHasUnsavedChanges(true)
+    
+    // Clear field error when user starts editing
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev }
+        delete updated[field]
+        return updated
+      })
+    }
+
+    // Real-time validation
+    validateField(field, value)
+  }
+
+  // Validate individual fields
+  const validateField = (field: string, value: any): boolean => {
+    let isValid = true
+    const errors: Record<string, string> = { ...fieldErrors }
+
+    switch (field) {
+      case "email":
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errors.email = "Please enter a valid email address"
+          isValid = false
+        } else {
+          delete errors.email
+        }
+        break
+      case "phone":
+        if (value && !/^\+?[\d\s\-()]{10,}$/.test(value.replace(/\s/g, ""))) {
+          errors.phone = "Please enter a valid phone number"
+          isValid = false
+        } else {
+          delete errors.phone
+        }
+        break
+      case "website":
+        if (value && !/^https?:\/\/.+\..+/i.test(value)) {
+          errors.website = "Please enter a valid website URL (start with http:// or https://)"
+          isValid = false
+        } else {
+          delete errors.website
+        }
+        break
+    }
+
+    setFieldErrors(errors)
+    return isValid
+  }
+
+  // Validate all fields before saving
+  const validateAllFields = (): boolean => {
+    let isValid = true
+    const errors: Record<string, string> = {}
+
+    if (!settingsData.fullName?.trim()) {
+      errors.fullName = "Full name is required"
+      isValid = false
+    }
+    if (!settingsData.email?.trim()) {
+      errors.email = "Email is required"
+      isValid = false
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settingsData.email)) {
+      errors.email = "Please enter a valid email address"
+      isValid = false
+    }
+    if (settingsData.phone && !/^\+?[\d\s\-()]{10,}$/.test(settingsData.phone.replace(/\s/g, ""))) {
+      errors.phone = "Please enter a valid phone number"
+      isValid = false
+    }
+    if (settingsData.website && !/^https?:\/\/.+\..+/i.test(settingsData.website)) {
+      errors.website = "Please enter a valid website URL"
+      isValid = false
+    }
+
+    setFieldErrors(errors)
+    return isValid
   }
 
   const handleSaveSettings = async () => {
     try {
+      // Validate all fields before saving
+      if (!validateAllFields()) {
+        setError("Please fix the errors below before saving")
+        return
+      }
+
       setSaving(true)
       setError("")
       setSuccess("")
@@ -116,35 +281,62 @@ export default function SettingsPage() {
         return
       }
 
+      // Function to extract CSRF token from cookie
+      const getCsrfToken = () => {
+        const name = "XSRF-TOKEN"
+        const decodedCookies = decodeURIComponent(document.cookie)
+        const cookieArray = decodedCookies.split(";")
+        
+        for (let cookie of cookieArray) {
+          cookie = cookie.trim()
+          if (cookie.startsWith(name + "=")) {
+            return cookie.substring(name.length + 1)
+          }
+        }
+        
+        // Fallback: check common Laravel CSRF cookie names
+        const csrfMatch = document.cookie.match(/(XSRF-TOKEN|csrf-token)=([^;]+)/)
+        return csrfMatch ? decodeURIComponent(csrfMatch[2]) : null
+      }
+
       const updatePayload = {
         name: settingsData.fullName,
         email: settingsData.email,
         phone: settingsData.phone,
         address: settingsData.mailingAddress,
         brand_name: settingsData.brandName,
-        bio: settingsData.businessName,
+        bio: settingsData.about,
         bank_account: settingsData.bankAccountNumber,
         routing_number: settingsData.bankRoutingNumber,
         account_holder: settingsData.fullName,
       }
 
       console.log("Saving settings with payload:", updatePayload)
-      console.log("API URL:", `${process.env.NEXT_PUBLIC_API_URL}/creator/profile`)
-      console.log("Token:", token?.substring(0, 20) + "...")
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/profile`, {
+      // Build headers
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      }
+
+      // Note: CSRF token not needed for Bearer token auth with API exemptions
+
+      console.log("Request headers:", { ...headers, Authorization: "Bearer [token]" })
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/creator/profile`
+      console.log("Full API URL:", apiUrl)
+
+      const response = await fetch(apiUrl, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(updatePayload),
       })
 
       console.log("Save response status:", response.status)
-      console.log("Save response statusText:", response.statusText)
+      console.log("Save response headers:", {
+        "content-type": response.headers.get("content-type"),
+        "access-control-allow-origin": response.headers.get("access-control-allow-origin"),
+      })
       
-      // Get response text first to debug
       const responseText = await response.text()
       console.log("Save response text:", responseText)
 
@@ -163,44 +355,242 @@ export default function SettingsPage() {
       console.log("Save response data:", data)
       
       if (data.status) {
-        setSuccess("Settings saved successfully!")
+        setSuccess("✓ Settings saved successfully!")
         setEditingSettings(false)
-        setTimeout(() => setSuccess(""), 3000)
+        setHasUnsavedChanges(false)
+        setLastUpdated(new Date())
+        setFieldErrors({})
+        setTimeout(() => setSuccess(""), 4000)
       } else {
         setError(data.message || "Failed to save settings")
       }
     } catch (err) {
       console.error("Error saving settings:", err)
-      setError(err instanceof Error ? err.message : "Failed to save settings. Please try again.")
+      
+      // Check if it's a network error or CORS error
+      if (err instanceof TypeError) {
+        if (err.message.includes("Failed to fetch")) {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL
+          setError(
+            `Failed to fetch: Cannot connect to the backend server.\n\n` +
+            `Backend URL: ${apiUrl}\n\n` +
+            `Possible causes:\n` +
+            `• Laragon server is not running\n` +
+            `• Backend is not accessible at the configured URL\n` +
+            `• Network or firewall blocking the connection\n\n` +
+            `Click "Try Test Connection" above to verify backend availability.`
+          )
+        } else {
+          setError(`Network error: ${err.message}`)
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to save settings. Please try again.")
+      }
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Discard changes and reload original data
+  const handleDiscardChanges = () => {
+    if (originalData) {
+      setSettingsData(originalData)
+      setEditingSettings(false)
+      setHasUnsavedChanges(false)
+      setFieldErrors({})
+    }
+  }
+
+  // Manual refresh
+  const handleManualRefresh = async () => {
+    if (!hasUnsavedChanges) {
+      await fetchCreatorProfile()
+    }
+  }
+
+  // Test backend connectivity
+  const testBackendConnection = async () => {
+    try {
+      setError("")
+      setSuccess("")
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      if (!apiUrl) {
+        setError("API URL not configured in environment variables")
+        return
+      }
+
+      const token = localStorage.getItem("auth_token")
+      if (!token) {
+        setError("No authentication token found. Please login first.")
+        return
+      }
+
+      // Test GET request first
+      const testUrl = `${apiUrl}/creator/profile`
+      console.log("Testing GET connection to:", testUrl)
+      
+      const getResponse = await fetch(testUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log("Backend GET test response status:", getResponse.status)
+      const getData = await getResponse.json()
+      console.log("Backend GET test response:", getData)
+
+      if (!getResponse.ok || !getData.status) {
+        setError(
+          `GET request test failed:\n\n` +
+          `Status: ${getResponse.status}\n` +
+          `Message: ${getData.message || "Unknown error"}`
+        )
+        return
+      }
+
+      // Now test PUT request
+      console.log("Testing PUT connection to:", testUrl)
+      
+      const putResponse = await fetch(testUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bio: "test" }), // Minimal test payload
+      })
+
+      console.log("Backend PUT test response status:", putResponse.status)
+      const putText = await putResponse.text()
+      console.log("Backend PUT test response text:", putText)
+      
+      let putData: any = {}
+      try {
+        putData = JSON.parse(putText)
+      } catch (e) {
+        putData = { error: "Could not parse response" }
+      }
+
+      if (putResponse.ok && putData.status) {
+        setSuccess(
+          `✓ BOTH GET and PUT requests work!\n\n` +
+          `Server: ${apiUrl}\n` +
+          `GET Status: 200 OK ✓\n` +
+          `PUT Status: ${putResponse.status} OK ✓\n\n` +
+          `Your settings should save properly now.`
+        )
+      } else if (!putResponse.ok) {
+        setError(
+          `PUT request failed:\n\n` +
+          `Status: ${putResponse.status}\n` +
+          `Response: ${putText.substring(0, 200)}\n\n` +
+          `GET works but PUT doesn't. This might be a server configuration issue.`
+        )
+      } else {
+        setError(
+          `PUT returned unexpected response:\n\n` +
+          `Status: ${putResponse.status}\n` +
+          `Message: ${putData.message || "Unknown error"}`
+        )
+      }
+    } catch (err) {
+      console.error("Backend connection test failed:", err)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      setError(
+        `Backend connection failed!\n\n` +
+        `Error: ${err instanceof Error ? err.message : "Unknown error"}\n\n` +
+        `Trying to reach: ${apiUrl}\n\n` +
+        `Please ensure:\n` +
+        `1. Laragon Apache server is running\n` +
+        `2. Backend URL is correct: ${apiUrl}\n` +
+        `3. No firewall is blocking the connection\n\n` +
+        `Check browser console (F12) for more details.`
+      )
     }
   }
 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Account Settings</h2>
-        {!editingSettings && !loading && (
-          <Button onClick={() => setEditingSettings(true)} variant="outline">
-            <Edit2 className="w-4 h-4 mr-2" />
-            Edit Settings
-          </Button>
-        )}
+      {/* Profile Picture Section */}
+      <DashboardProfileCard />
+
+      {/* Account Settings Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Account Settings</h2>
+          {lastUpdated && !hasUnsavedChanges && (
+            <p className="text-xs text-neutral-500 mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
+          {hasUnsavedChanges && (
+            <p className="text-xs text-orange-600 font-semibold mt-1 flex items-center gap-1">
+              ⚠️ You have unsaved changes
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {!editingSettings && !loading && (
+            <>
+              <Button 
+                onClick={testBackendConnection} 
+                variant="outline" 
+                size="sm"
+                title="Test if backend server is reachable"
+              >
+                🔗 Test Connection
+              </Button>
+              <Button 
+                onClick={handleManualRefresh} 
+                variant="outline" 
+                size="sm"
+                disabled={hasUnsavedChanges}
+                title="Refresh settings from server"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => setEditingSettings(true)} variant="outline">
+                <Edit2 className="w-4 h-4 mr-2" />
+                Edit Settings
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Error Alert */}
       {error && (
         <Card className="p-4 bg-red-50 border border-red-200">
-          <p className="text-red-800 text-sm">{error}</p>
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-900 text-sm font-semibold">Error</p>
+              <p className="text-red-800 text-sm whitespace-pre-wrap mt-1">{error}</p>
+              {error.includes("Failed to fetch") && (
+                <Button
+                  onClick={testBackendConnection}
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 text-xs border-red-300"
+                >
+                  🔗 Try Test Connection
+                </Button>
+              )}
+            </div>
+          </div>
         </Card>
       )}
 
       {/* Success Alert */}
       {success && (
         <Card className="p-4 bg-green-50 border border-green-200">
-          <p className="text-green-800 text-sm">{success}</p>
+          <div className="flex gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <p className="text-green-800 text-sm font-semibold">{success}</p>
+          </div>
         </Card>
       )}
 
@@ -220,18 +610,37 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="font-semibold mb-2 block">Full Name *</Label>
-                  <Input value={settingsData.fullName} onChange={(e) => handleSettingsChange("fullName", e.target.value)} placeholder="John Designer" />
+                  <Input 
+                    value={settingsData.fullName} 
+                    onChange={(e) => handleSettingsChange("fullName", e.target.value)} 
+                    placeholder="John Designer"
+                    className={fieldErrors.fullName ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.fullName && <p className="text-xs text-red-600 mt-1">{fieldErrors.fullName}</p>}
                 </div>
                 <div>
                   <Label className="font-semibold mb-2 block">Email Address *</Label>
-                  <Input type="email" value={settingsData.email} onChange={(e) => handleSettingsChange("email", e.target.value)} placeholder="john@example.com" />
+                  <Input 
+                    type="email" 
+                    value={settingsData.email} 
+                    onChange={(e) => handleSettingsChange("email", e.target.value)} 
+                    placeholder="john@example.com"
+                    className={fieldErrors.email ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.email && <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>}
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Phone Number *</Label>
-                  <Input value={settingsData.phone} onChange={(e) => handleSettingsChange("phone", e.target.value)} placeholder="+1 (555) 123-4567" />
+                  <Label className="font-semibold mb-2 block">Phone Number</Label>
+                  <Input 
+                    value={settingsData.phone} 
+                    onChange={(e) => handleSettingsChange("phone", e.target.value)} 
+                    placeholder="+1 (555) 123-4567"
+                    className={fieldErrors.phone ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.phone && <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>}
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Mailing Address *</Label>
+                  <Label className="font-semibold mb-2 block">Mailing Address</Label>
                   <Input value={settingsData.mailingAddress} onChange={(e) => handleSettingsChange("mailingAddress", e.target.value)} placeholder="123 Fashion St, New York, NY 10001" />
                 </div>
               </div>
@@ -249,6 +658,17 @@ export default function SettingsPage() {
                   <Label className="font-semibold mb-2 block">EIN Number</Label>
                   <Input value={settingsData.einNumber || ""} onChange={(e) => handleSettingsChange("einNumber", e.target.value)} placeholder="12-3456789" />
                 </div>
+                <div className="md:col-span-2">
+                  <Label className="font-semibold mb-2 block">About Your Business</Label>
+                  <textarea 
+                    value={settingsData.about || ""} 
+                    onChange={(e) => handleSettingsChange("about", e.target.value)} 
+                    placeholder="Tell us about your business, your story, and what makes you unique..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">Share your brand story and what makes your business unique</p>
+                </div>
                 <div>
                   <Label className="font-semibold mb-2 block">Business Registration Number</Label>
                   <Input value={settingsData.businessRegistrationNumber || ""} onChange={(e) => handleSettingsChange("businessRegistrationNumber", e.target.value)} placeholder="For non-U.S. based companies" />
@@ -259,7 +679,13 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <Label className="font-semibold mb-2 block">Website</Label>
-                  <Input value={settingsData.website || ""} onChange={(e) => handleSettingsChange("website", e.target.value)} placeholder="www.designercreations.com" />
+                  <Input 
+                    value={settingsData.website || ""} 
+                    onChange={(e) => handleSettingsChange("website", e.target.value)} 
+                    placeholder="https://www.designercreations.com"
+                    className={fieldErrors.website ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.website && <p className="text-xs text-red-600 mt-1">{fieldErrors.website}</p>}
                 </div>
                 <div>
                   <Label className="font-semibold mb-2 block">Job Title *</Label>
@@ -348,7 +774,7 @@ export default function SettingsPage() {
                   "Save Changes"
                 )}
               </Button>
-              <Button onClick={() => setEditingSettings(false)} variant="outline" className="flex-1" disabled={saving}>
+              <Button onClick={handleDiscardChanges} variant="outline" className="flex-1" disabled={saving}>
                 Cancel
               </Button>
             </div>
@@ -397,6 +823,12 @@ export default function SettingsPage() {
                 <p className="text-neutral-600">Website</p>
                 <p className="font-semibold">{settingsData.website || "—"}</p>
               </div>
+              {settingsData.about && (
+                <div>
+                  <p className="text-neutral-600">About Your Business</p>
+                  <p className="font-semibold whitespace-pre-wrap leading-relaxed">{settingsData.about}</p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -435,6 +867,24 @@ export default function SettingsPage() {
           </Card>
         </div>
       )}
+
+      {/* API Diagnostics Section - for troubleshooting */}
+      <Card className="p-0 border-0 shadow-none">
+        <button
+          onClick={() => setShowDiagnostics(!showDiagnostics)}
+          className="w-full p-6 flex items-center justify-between hover:bg-neutral-50 rounded-lg border transition-colors"
+        >
+          <span className="font-semibold text-neutral-700">Profile Picture Upload Issues? 🔧</span>
+          <ChevronDown
+            className={`w-5 h-5 text-neutral-600 transition-transform ${showDiagnostics ? "rotate-180" : ""}`}
+          />
+        </button>
+        {showDiagnostics && (
+          <div className="px-6 pb-6 border-t border-neutral-200">
+            <ApiDiagnosticsPanel />
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

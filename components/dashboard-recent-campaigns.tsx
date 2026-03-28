@@ -10,6 +10,8 @@ interface Campaign {
   fundedAmount: number
   fundingGoal: number
   backers: number
+  upvoteGoal: number
+  upvoteCount: number
   status: string
 }
 
@@ -51,7 +53,7 @@ export function DashboardRecentCampaigns({ campaigns }: DashboardRecentCampaigns
                       <span>{campaign.backers} backers</span>
                     </div>
                   </div>
-                  <Badge variant={campaign.status === "active" ? "default" : "secondary"}>{campaign.status}</Badge>
+                  <Badge variant={campaign.status === "live" ? "default" : "secondary"}>{campaign.status}</Badge>
                 </div>
               </Link>
             ))

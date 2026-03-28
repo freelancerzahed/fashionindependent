@@ -1,44 +1,70 @@
-"use client"
-
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CampaignCard } from "@/components/campaign-card"
 import { CarouselSlider } from "@/components/carousel-slider"
 import { HeroSlide } from "@/components/hero-slide"
-import { BlogSlide } from "@/components/blog-slide"
-import { useState, useEffect } from "react"
-import { MobileTabs } from "@/components/mobile-tabs"
+import { FeaturedCampaigns } from "@/components/featured-campaigns"
+import { LatestArticles } from "@/components/latest-articles"
 
-export default function HomePage() {
-  const [activeFilter, setActiveFilter] = useState("new")
-  const [campaigns, setCampaigns] = useState<any[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
+// Revalidate every 1 hour (3600 seconds) for ISR
+export const revalidate = 3600
 
-  useEffect(() => {
-    // Generate campaigns only on the client side to avoid hydration mismatch
-    const generatedCampaigns = Array.from({ length: 6 }, (_, i) => ({
-      id: `campaign-${i + 1}`,
-      title: `Fashion Design ${i + 1}`,
-      designer: `Designer ${i + 1}`,
-      image: `/placeholder.svg?height=400&width=400&query=fashion design ${i + 1}`,
-      fundedAmount: Math.floor(Math.random() * 15000) + 5000,
-      fundingGoal: 20000,
-      backers: Math.floor(Math.random() * 100) + 20,
-      daysRemaining: Math.floor(Math.random() * 28) + 2,
-      category: "Womenswear",
-      subcategory: "Dresses",
-      description: `Beautiful sustainable fashion design by Designer ${i + 1}. Made with eco-friendly materials and ethical production practices.`,
-      status: "active" as const,
-      pledgeOptions: [
-        { id: `pledge-${i}-1`, amount: 50, description: "Early Bird", quantity: 20 },
-        { id: `pledge-${i}-2`, amount: 100, description: "Standard", quantity: 100 },
-        { id: `pledge-${i}-3`, amount: 250, description: "Premium", quantity: 10 },
-      ],
-      createdAt: new Date(),
-    }))
-    setCampaigns(generatedCampaigns)
-    setIsLoaded(true)
-  }, [])
+interface BlogArticle {
+  id: string | number
+  title: string
+  slug: string
+  description: string
+  featured_image: string
+  created_at: string
+}
+
+interface BlogResponse {
+  result: boolean
+  blogs: {
+    data: BlogArticle[]
+  }
+}
+
+async function fetchArticles(): Promise<BlogArticle[]> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL
+
+    if (!apiUrl) {
+      console.error("❌ API URL not configured")
+      return []
+    }
+
+    console.log("📡 Server: Fetching latest articles from", `${apiUrl}/blog-list`)
+
+    const response = await fetch(`${apiUrl}/blog-list?page=1`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      next: { revalidate: 3600 }
+    })
+
+    if (!response.ok) {
+      console.error(`❌ API error: ${response.status}`)
+      return []
+    }
+
+    const data: BlogResponse = await response.json()
+
+    if (data.result && data.blogs?.data && Array.isArray(data.blogs.data)) {
+      console.log("✓ Successfully fetched", data.blogs.data.length, "articles for home")
+      return data.blogs.data.slice(0, 6)
+    }
+
+    return []
+  } catch (err) {
+    console.error("❌ Error fetching articles:", err)
+    return []
+  }
+}
+
+export default async function HomePage() {
+  const articles = await fetchArticles()
 
   const heroSlides = [
     {
@@ -67,72 +93,51 @@ export default function HomePage() {
     },
   ]
 
-  const blogArticles = [
-    {
-      id: "article-1",
-      title: "The Future of Sustainable Fashion",
-      excerpt:
-        "Explore how independent designers are leading the sustainable fashion revolution with eco-friendly materials and ethical production.",
-      image: "/sustainable-fashion-future.jpg",
-      date: "March 15, 2025",
-    },
-    {
-      id: "article-2",
-      title: "Meet Our Top Designers",
-      excerpt:
-        "Discover the talented designers behind some of our most successful campaigns and learn about their creative journey.",
-      image: "/fashion-designers-studio.jpg",
-      date: "March 10, 2025",
-    },
-    {
-      id: "article-3",
-      title: "How to Start Your Fashion Brand",
-      excerpt:
-        "A comprehensive guide for aspiring fashion entrepreneurs on how to launch their brand through crowdfunding.",
-      image: "/fashion-brand-startup.jpg",
-      date: "March 5, 2025",
-    },
-    {
-      id: "article-4",
-      title: "Backer Stories: Why We Support Independent Fashion",
-      excerpt:
-        "Read inspiring stories from our community members about why they choose to support independent fashion designers.",
-      image: "/fashion-community-support.jpg",
-      date: "February 28, 2025",
-    },
-  ]
-
-  const filterTabs = [
-    { id: "new", label: "New Arrivals" },
-    { id: "closing", label: "Closing Soon" },
-    { id: "favs", label: "Crowd Favs" },
-  ]
-
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1">
-        {/* Hero Carousel Section */}
-        <section className="py-8">
-          <div className="container mx-auto px-4">
-            <CarouselSlider
-              items={heroSlides.map((slide) => (
-                <HeroSlide
-                  key={slide.title}
-                  title={slide.title}
-                  subtitle={slide.subtitle}
-                  description={slide.description}
-                  image={slide.image}
-                  ctaText={slide.ctaText}
-                  ctaLink={slide.ctaLink}
-                />
-              ))}
-              autoPlay={true}
-              autoPlayInterval={6000}
-              showIndicators={true}
-              showArrows={true}
-            />
+        {/* Top Image Section */}
+        <section className="w-full h-screen relative">
+          <img src="images/section_2.png" alt="Section 2" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
+            <p className="text-sm font-medium mb-2 opacity-90">by Mirror Me Fashion</p>
+            <h2 className="text-[45px] md:text-[60px] font-bold mb-4 text-balance">The Fashion Independent</h2>
+            <p className="text-lg md:text-xl mb-8 max-w-2xl opacity-95">Discover rare fashion and support talented designers around the world</p>
+            <Link data-slot="button" href="/discover" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 rounded-md px-6 has-[&>svg]:px-4">
+              Discover Campaigns
+            </Link>
           </div>
         </section>
+
+        {/* Two Images Side-by-Side */}
+        <section className="w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+            <div className="relative w-full h-full min-h-[300px]">
+              <img src="images/section_62.png" alt="Section 62" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
+                <h2 className="text-3xl md:text-4xl mb-3">Support Independent Designers</h2>
+                <p className="text-lg md:text-xl mb-6">Build the brand of a creative</p>
+                <Link data-slot="button" href="/discover" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 rounded-md px-6 has-[&>svg]:px-4">
+                  Discover Campaigns
+                </Link>
+              </div>
+            </div>
+            <div className="relative w-full h-full min-h-[300px]">
+              <img src="images/banner-boho-chic-mountain.png" alt="Boho Chic Mountain" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
+                <h2 className="text-3xl md:text-4xl mb-3">Sustainable Fashion</h2>
+                <p className="text-lg md:text-xl mb-6">Eco Conscious Fashion</p>
+                <Link data-slot="button" href="/about" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 rounded-md px-6 has-[&>svg]:px-4">
+                  Learn More
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
 
         {/* Mission Statement */}
         <section className="py-16 bg-white">
@@ -151,56 +156,10 @@ export default function HomePage() {
         </section>
 
         {/* Featured Campaigns */}
-        <section className="py-16 bg-neutral-50">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold">New Arrivals</h2>
-              <div className="hidden md:flex gap-4">
-                <Button variant="outline">Closing Soon</Button>
-                <Button variant="outline">Crowd Favs</Button>
-              </div>
-            </div>
+        <FeaturedCampaigns />
 
-            <div className="md:hidden mb-6">
-              <MobileTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={setActiveFilter}>
-                <div className="grid grid-cols-1 gap-6">
-                  {isLoaded && campaigns.map((campaign) => (
-                    <CampaignCard key={campaign.id} campaign={campaign} />
-                  ))}
-                </div>
-              </MobileTabs>
-            </div>
-
-            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isLoaded && campaigns.map((campaign) => (
-                <CampaignCard key={campaign.id} campaign={campaign} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Blog Carousel Section */}
-        <section className="py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold mb-8">Latest Articles</h2>
-            <CarouselSlider
-              items={blogArticles.map((article) => (
-                <BlogSlide
-                  key={article.id}
-                  id={article.id}
-                  title={article.title}
-                  excerpt={article.excerpt}
-                  image={article.image}
-                  date={article.date}
-                />
-              ))}
-              autoPlay={true}
-              autoPlayInterval={7000}
-              showIndicators={true}
-              showArrows={true}
-            />
-          </div>
-        </section>
+        {/* Latest Articles - Now Dynamic */}
+        <LatestArticles initialArticles={articles} />
 
         {/* CTA Section */}
         <section className="py-20 bg-neutral-900 text-white">

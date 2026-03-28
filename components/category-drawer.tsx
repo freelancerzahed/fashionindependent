@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { ChevronRight, X } from "lucide-react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer"
+import { useMenuCategories } from "@/hooks/useMenuCategories"
 
 interface CategoryDrawerProps {
   open: boolean
@@ -12,53 +13,28 @@ interface CategoryDrawerProps {
 
 export function CategoryDrawer({ open, onOpenChange }: CategoryDrawerProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-
-  const categories = [
-    {
-      name: "Womenswear",
-      href: "/category/womenswear",
-      subcategories: [
-        "Tops",
-        "Bottoms",
-        "Sweaters & Cardigans",
-        "Dresses",
-        "Coats & Jackets",
-        "Jumpsuits & Rompers",
-        "Lingerie & Underwear",
-        "Accessories",
-        "Shoes",
-        "Swimwear",
-      ],
-    },
-    {
-      name: "Menswear",
-      href: "/category/menswear",
-      subcategories: ["Shirts", "Bottoms", "Coats & Jackets", "Suits", "Underwear", "Accessories", "Shoes"],
-    },
-    {
-      name: "Kidswear",
-      href: "/category/kidswear",
-      subcategories: [
-        "Tops",
-        "Bottoms",
-        "Sweaters & Cardigans",
-        "Dresses",
-        "Coats & Jackets",
-        "Jumpsuits & Rompers",
-        "Lingerie & Underwear",
-        "Accessories",
-        "Shoes",
-        "Swimwear",
-      ],
-    },
-    {
-      name: "Wearables",
-      href: "/category/wearables",
-      subcategories: [],
-    },
-  ]
+  const { categories, loading, error } = useMenuCategories()
 
   const currentCategory = categories.find((c) => c.name === selectedCategory)
+
+  // Show loading state
+  if (loading && open) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[85vh] flex flex-col">
+          <DrawerHeader className="flex items-center justify-between border-b pb-4">
+            <DrawerTitle>Loading categories...</DrawerTitle>
+            <DrawerClose className="p-0 h-auto w-auto">
+              <X className="h-5 w-5" />
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    )
+  }
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -86,9 +62,14 @@ export function CategoryDrawer({ open, onOpenChange }: CategoryDrawerProps) {
         {!selectedCategory ? (
           <div className="flex-1 overflow-y-auto">
             <div className="divide-y">
+              {categories.length === 0 && !loading && (
+                <div className="p-4 text-center text-neutral-500">
+                  {error ? "Error loading categories" : "No categories available"}
+                </div>
+              )}
               {categories.map((category) => (
                 <button
-                  key={category.name}
+                  key={category.id}
                   onClick={() => setSelectedCategory(category.name)}
                   className="w-full flex items-center justify-between px-4 py-4 hover:bg-neutral-50 transition-colors text-left"
                 >
@@ -101,30 +82,30 @@ export function CategoryDrawer({ open, onOpenChange }: CategoryDrawerProps) {
         ) : (
           /* Subcategories View */
           <div className="flex-1 overflow-y-auto">
-            <div className="divide-y">
-              {/* View all category link */}
-              <Link
-                href={currentCategory?.href || "#"}
-                onClick={() => onOpenChange(false)}
-                className="w-full flex items-center justify-between px-4 py-4 hover:bg-neutral-50 transition-colors font-semibold text-neutral-900 border-b-2"
-              >
-                <span>View All {selectedCategory}</span>
-                <ChevronRight className="h-5 w-5 text-neutral-400" />
-              </Link>
-
-              {/* Subcategories */}
-              {currentCategory?.subcategories.map((subcategory) => (
+            {currentCategory?.subcategories && currentCategory.subcategories.length > 0 ? (
+              <div className="divide-y">
+                {currentCategory.subcategories.map((subcategory) => (
+                  <Link
+                    key={subcategory.id}
+                    href={subcategory.href}
+                    onClick={() => onOpenChange(false)}
+                    className="block px-4 py-4 hover:bg-neutral-50 transition-colors border-b last:border-b-0 text-neutral-900 hover:text-black font-medium"
+                  >
+                    {subcategory.name}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-neutral-500">
                 <Link
-                  key={subcategory}
-                  href={`${currentCategory.href}?sub=${subcategory.toLowerCase().replace(/\s+/g, "-")}`}
+                  href={currentCategory?.href || "/"}
                   onClick={() => onOpenChange(false)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 transition-colors text-neutral-700 hover:text-neutral-900"
+                  className="text-blue-600 hover:underline font-medium"
                 >
-                  <span className="text-sm">{subcategory}</span>
-                  <ChevronRight className="h-4 w-4 text-neutral-300" />
+                  View Category
                 </Link>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </DrawerContent>
