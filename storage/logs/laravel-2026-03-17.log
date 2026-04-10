@@ -1,0 +1,112 @@
+[2026-03-17 13:38:40] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:38:40] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:38:40] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:38:40] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:38:58] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:38:58] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:38:58] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:38:58] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:39:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:39:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:39:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:39:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:39:59] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:39:59] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:39:59] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:39:59] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:40:30] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:40:30] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:40:30] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:40:30] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:41:00] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:41:00] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:41:00] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:41:00] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:41:51] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:41:51] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:41:51] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:41:51] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:42:52] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:42:52] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:42:52] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:42:52] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 13:43:52] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 13:43:52] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 13:43:52] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 13:43:52] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:00:52] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:00:52] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:00:52] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:00:52] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:00:59] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:00:59] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:00:59] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:00:59] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:01:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:01:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:01:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:01:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:01:59] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:01:59] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:01:59] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:01:59] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:02:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:02:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:02:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:02:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:02:59] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:02:59] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:02:59] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:02:59] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:03:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:03:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:03:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:03:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:03:59] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:03:59] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:03:59] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:03:59] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:04:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:04:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:04:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:04:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:04:59] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:04:59] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:04:59] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:04:59] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:05:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:05:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:05:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:05:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:06:00] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:06:00] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:06:00] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:06:00] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:06:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:06:29] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:06:29] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:06:29] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:07:51] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:07:51] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:07:51] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:07:51] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:08:51] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:08:51] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:08:51] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:08:51] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:09:51] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:09:51] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:09:51] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:09:51] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:10:14] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:10:14] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:10:14] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:10:14] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:10:30] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:10:30] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:10:30] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:10:30] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 
+[2026-03-17 14:11:00] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 153|UI2xPfky6BRLFIt7H6q...","is_bearer":true} 
+[2026-03-17 14:11:00] local.INFO: Extracted bearer token {"token_preview":"153|UI2xPf...","token_length":52} 
+[2026-03-17 14:11:00] local.INFO: Found personal access token {"token_id":153,"user_id":64,"revoked":null} 
+[2026-03-17 14:11:00] local.INFO: User authenticated via bearer token {"user_id":64,"user_email":"creator@example.com"} 

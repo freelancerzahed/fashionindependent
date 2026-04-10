@@ -1,0 +1,578 @@
+<?php
+
+namespace App\Http\Controllers\Api\V2;
+
+use App\Http\Controllers\Controller;
+use App\Models\Campaign;
+use App\Models\Creator;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+
+class CampaignController extends Controller
+{
+    /**
+     * Create a new campaign
+     */
+    public function store(Request $request)
+    {
+        try {
+            // Debug logging - log the raw request
+            Log::info('Campaign store() called - Raw Request Data', [
+                'content_type' => $request->header('Content-Type'),
+                'request_keys' => array_keys($request->all()),
+                'has_files' => $request->hasFile('product_images') || $request->hasFile('tech_pack_file'),
+                'file_keys' => array_keys($request->allFiles()),
+            ]);
+
+            // Debug logging
+            $authHeader = $request->header('Authorization');
+            $user = $request->user();
+            
+            Log::info('Campaign store() called with details', [
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'has_auth_header' => !empty($authHeader),
+                'auth_header_preview' => $authHeader ? substr($authHeader, 0, 30) . '...' : null,
+                'user_id' => $user?->id,
+                'user_email' => $user?->email,
+                'is_authenticated' => $user !== null,
+                'has_files' => $request->hasFile('product_images') || $request->hasFile('tech_pack_file'),
+            ]);
+
+            if (!$user) {
+                Log::warning('Campaign creation rejected - not authenticated', [
+                    'auth_header' => !empty($authHeader),
+                    'timestamp' => now()
+                ]);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Authentication required. Please log in.',
+                    'error' => 'Unauthenticated'
+                ], 401);
+            }
+
+            // Check if user is a creator
+            $creator = Creator::where('user_id', $user->id)->first();
+            if (!$creator) {
+                Log::warning('Campaign creation rejected - user is not a creator', ['user_id' => $user->id]);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You must be a registered creator to launch campaigns. Please complete your creator profile first.',
+                    'error' => 'creator_not_found'
+                ], 403);
+            }
+
+            // Validation rules
+            $rules = [
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'funding_goal' => 'required|numeric|min:0.01',
+                'product_name' => 'required|string|max:255',
+                'product_description' => 'nullable|string',
+                'materials' => 'nullable|string', // JSON string from FormData
+                'colors' => 'nullable|string', // JSON string from FormData
+                'sizes' => 'nullable|string', // JSON string from FormData
+                'product_images' => 'nullable|array',
+                'product_images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB per image
+                'tech_pack_file' => 'nullable|mimes:pdf|max:10240', // 10MB for PDF
+                'projectDuration' => 'nullable|integer|min:30|max:60',
+            ];
+
+            $validator = Validator::make($request->all(), $rules);
+
+            if ($validator->fails()) {
+                Log::warning('Campaign creation failed: Validation error', [
+                    'user_id' => $user->id,
+                    'errors' => $validator->errors()->toArray()
+                ]);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Parse JSON fields from FormData
+            $materials = [];
+            $colors = [];
+            $sizes = [];
+
+            try {
+                if ($request->has('materials')) {
+                    $materials = json_decode($request->get('materials'), true) ?? [];
+                }
+                if ($request->has('colors')) {
+                    $colors = json_decode($request->get('colors'), true) ?? [];
+                }
+                if ($request->has('sizes')) {
+                    $sizes = json_decode($request->get('sizes'), true) ?? [];
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to parse JSON fields', ['error' => $e->getMessage()]);
+            }
+
+            // Handle file uploads
+            $productImages = null;
+            $techPackFile = null;
+
+            try {
+                // Debug: Log what files we have
+                Log::info('File upload debug', [
+                    'has_product_images' => $request->hasFile('product_images'),
+                    'product_images_count' => count($request->file('product_images') ?? []),
+                    'has_tech_pack' => $request->hasFile('tech_pack_file'),
+                    'all_files' => array_keys($request->allFiles()),
+                    'all_input' => $request->all()
+                ]);
+
+                // Store product images
+                if ($request->hasFile('product_images')) {
+                    $uploadedImages = [];
+                    $images = $request->file('product_images');
+                    
+                    // Handle case where it might be a single file or array
+                    if (!is_array($images)) {
+                        $images = [$images];
+                    }
+                    
+                    Log::info('Processing product images', [
+                        'count' => count($images),
+                        'first_image' => $images[0] ? get_class($images[0]) : 'null',
+                        'files_array' => array_map(function($img) {
+                            return [
+                                'name' => $img ? $img->getClientOriginalName() : 'null',
+                                'size' => $img ? $img->getSize() : 0,
+                                'is_valid' => $img ? $img->isValid() : false,
+                                'path' => $img ? $img->getPathname() : 'null'
+                            ];
+                        }, $images)
+                    ]);
+                    
+                    foreach ($images as $image) {
+                        if (!$image) {
+                            Log::warning('Null image encountered');
+                            continue;
+                        }
+                        
+                        Log::info('Image details before storage', [
+                            'name' => $image->getClientOriginalName(),
+                            'size' => $image->getSize(),
+                            'path' => $image->getPathname(),
+                            'is_valid' => $image->isValid(),
+                            'mime' => $image->getMimeType(),
+                            'error' => $image->getError()
+                        ]);
+                        
+                        if (!$image->isValid()) {
+                            Log::warning('Invalid image file', [
+                                'name' => $image->getClientOriginalName(),
+                                'error' => $image->getError(),
+                                'error_message' => $image->getErrorMessage()
+                            ]);
+                            continue;
+                        }
+                        
+                        // Check if the file actually exists on disk
+                        if (!file_exists($image->getPathname())) {
+                            Log::warning('Image file does not exist on disk', [
+                                'name' => $image->getClientOriginalName(),
+                                'path' => $image->getPathname()
+                            ]);
+                            continue;
+                        }
+                        
+                        try {
+                            $path = $image->store('campaigns/products', 'public');
+                            Log::info('Image stored successfully', [
+                                'original_name' => $image->getClientOriginalName(),
+                                'stored_path' => $path
+                            ]);
+                            $uploadedImages[] = [
+                                'path' => $path,
+                                'url' => Storage::disk('public')->url($path),
+                                'uploaded_at' => now()
+                            ];
+                        } catch (\Exception $e) {
+                            Log::error('Failed to store image', [
+                                'name' => $image->getClientOriginalName(),
+                                'error' => $e->getMessage(),
+                                'path' => $image->getPathname(),
+                                'trace' => $e->getTraceAsString()
+                            ]);
+                            throw $e;
+                        }
+                    }
+                    if (!empty($uploadedImages)) {
+                        $productImages = json_encode($uploadedImages);
+                        Log::info('Product images uploaded', [
+                            'count' => count($uploadedImages),
+                            'user_id' => $user->id
+                        ]);
+                    }
+                } else {
+                    Log::warning('No product_images in request', [
+                        'request_keys' => array_keys($request->all()),
+                        'has_files' => $request->hasFile('product_images')
+                    ]);
+                }
+
+                // Store tech pack PDF
+                if ($request->hasFile('tech_pack_file')) {
+                    $file = $request->file('tech_pack_file');
+                    Log::info('Tech pack details before storage', [
+                        'name' => $file ? $file->getClientOriginalName() : 'null',
+                        'size' => $file ? $file->getSize() : 0,
+                        'path' => $file ? $file->getPathname() : 'null',
+                        'is_valid' => $file ? $file->isValid() : false
+                    ]);
+                    
+                    if ($file && $file->isValid() && file_exists($file->getPathname())) {
+                        try {
+                            $path = $file->store('campaigns/tech-packs', 'public');
+                            $techPackFile = $path;
+                            Log::info('Tech pack uploaded', [
+                                'campaign_id' => 'pending',
+                                'file_path' => $path,
+                                'original_name' => $file->getClientOriginalName(),
+                                'user_id' => $user->id
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to store tech pack', [
+                                'error' => $e->getMessage(),
+                                'file_name' => $file->getClientOriginalName(),
+                                'path' => $file->getPathname(),
+                                'trace' => $e->getTraceAsString()
+                            ]);
+                            throw $e;
+                        }
+                    } else {
+                        Log::warning('Tech pack file not valid or not found', [
+                            'is_null' => !$file,
+                            'is_valid' => $file ? $file->isValid() : false,
+                            'exists_on_disk' => $file ? file_exists($file->getPathname()) : false,
+                            'path' => $file ? $file->getPathname() : 'null',
+                            'error' => $file ? $file->getError() : 'null'
+                        ]);
+                    }
+                } else {
+                    Log::warning('No tech_pack_file in request', [
+                        'request_keys' => array_keys($request->all())
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('File upload failed', [
+                    'error' => $e->getMessage(),
+                    'user_id' => $user->id,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'File upload failed: ' . $e->getMessage(),
+                    'error' => 'file_upload_error'
+                ], 400);
+            }
+
+            // Create campaign
+            $campaign = Campaign::create([
+                'creator_id' => $creator->id,
+                'user_id' => $user->id,
+                'status' => 'draft',
+                'title' => $request->title,
+                'description' => $request->description,
+                'funding_goal' => $request->funding_goal,
+                'product_name' => $request->product_name,
+                'product_description' => $request->product_description,
+                'materials' => !empty($materials) ? json_encode($materials) : null,
+                'colors' => !empty($colors) ? json_encode($colors) : null,
+                'sizes' => !empty($sizes) ? json_encode($sizes) : null,
+                'product_images' => $productImages,
+                'tech_pack_file' => $techPackFile,
+                'days_active' => $request->projectDuration ?? 90,
+            ]);
+
+            Log::info('Campaign created successfully with files', [
+                'campaign_id' => $campaign->id,
+                'creator_id' => $creator->id,
+                'user_id' => $user->id,
+                'has_product_images' => !empty($productImages),
+                'has_tech_pack' => !empty($techPackFile)
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign created successfully',
+                'campaign' => $campaign
+            ], 201);
+        } catch (\Throwable $e) {
+            Log::error('Campaign creation failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Campaign creation failed',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get campaign by ID
+     */
+    public function show($campaignId)
+    {
+        $campaign = Campaign::with(['creator', 'pledges'])->find($campaignId);
+
+        if (!$campaign) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Campaign not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'campaign' => $campaign,
+            'funding_percentage' => $campaign->getFundingPercentage(),
+            'days_remaining' => $campaign->getDaysRemaining(),
+            'is_funded' => $campaign->isFunded(),
+            'is_active' => $campaign->isActive(),
+        ]);
+    }
+
+    /**
+     * Get all campaigns by current user (creator)
+     */
+    public function getCampaigns(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $creator = Creator::where('user_id', $user->id)->first();
+
+        if (!$creator) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User is not a creator'
+            ], 403);
+        }
+
+        $status = $request->query('status');
+        $query = Campaign::where('creator_id', $creator->id);
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $campaigns = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => true,
+            'campaigns' => $campaigns
+        ]);
+    }
+
+    /**
+     * Update campaign
+     */
+    public function update(Request $request, $campaignId)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $campaign = Campaign::find($campaignId);
+
+        if (!$campaign) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Campaign not found'
+            ], 404);
+        }
+
+        // Check authorization
+        if ($campaign->user_id !== $user->id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized to update this campaign'
+            ], 403);
+        }
+
+        // Can only update draft campaigns
+        if ($campaign->status !== 'draft') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only draft campaigns can be edited'
+            ], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'funding_goal' => 'nullable|numeric|min:0.01',
+            'product_name' => 'nullable|string|max:255',
+            'product_description' => 'nullable|string',
+            'materials' => 'nullable|array',
+            'colors' => 'nullable|array',
+            'sizes' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $campaign->update($request->only([
+                'title',
+                'description',
+                'funding_goal',
+                'product_name',
+                'product_description',
+                'materials',
+                'colors',
+                'sizes',
+            ]));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign updated successfully',
+                'campaign' => $campaign
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Campaign update failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Update failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Submit campaign for review
+     */
+    public function submitForReview(Request $request, $campaignId)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        $campaign = Campaign::find($campaignId);
+
+        if (!$campaign) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Campaign not found'
+            ], 404);
+        }
+
+        if ($campaign->user_id !== $user->id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        if ($campaign->status !== 'draft') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only draft campaigns can be submitted'
+            ], 400);
+        }
+
+        // Validate campaign has required fields
+        if (!$campaign->title || !$campaign->description || !$campaign->funding_goal) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Campaign must have title, description, and funding goal'
+            ], 400);
+        }
+
+        try {
+            $campaign->update(['status' => 'pending_review']);
+
+            Log::info('Campaign submitted for review', ['campaign_id' => $campaign->id]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign submitted for review',
+                'campaign' => $campaign
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Campaign submission failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Submission failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Launch a campaign (admin only)
+     */
+    public function launch(Request $request, $campaignId)
+    {
+        $campaign = Campaign::find($campaignId);
+
+        if (!$campaign) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Campaign not found'
+            ], 404);
+        }
+
+        if ($campaign->status !== 'pending_review') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only campaigns in pending_review status can be launched'
+            ], 400);
+        }
+
+        try {
+            $campaign->update([
+                'status' => 'live',
+                'launch_date' => now(),
+                'end_date' => now()->addDays($campaign->days_active),
+            ]);
+
+            Log::info('Campaign launched', ['campaign_id' => $campaign->id]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign launched successfully',
+                'campaign' => $campaign
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Campaign launch failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => false,
+                'message' => 'Launch failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}
