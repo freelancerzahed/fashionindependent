@@ -7,18 +7,20 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/lib/auth-context"
 import { CampaignLaunchForm, type CampaignFormData } from "@/components/campaign-launch-form"
 
 export default function LaunchCampaignPage() {
   const [step, setStep] = useState(1)
-  const [hasInventory, setHasInventory] = useState(false)
-  const [hasManufacturer, setHasManufacturer] = useState(false)
-  const [hasTechPack, setHasTechPack] = useState(false)
-  const [noTechPackOption, setNoTechPackOption] = useState("purchase")
+  const [productReadiness, setProductReadiness] = useState<"inventory" | "manufacturer" | "tech-pack" | "">("")
   const [isSubmittingCampaign, setIsSubmittingCampaign] = useState(false)
+  const [step1Error, setStep1Error] = useState("")
+  const [step2Errors, setStep2Errors] = useState<Record<string, string>>({})
+  const [step3Error, setStep3Error] = useState("")
+  const [submissionError, setSubmissionError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -84,23 +86,22 @@ export default function LaunchCampaignPage() {
   }
 
   const handleContinueStep1 = () => {
-    if (!hasInventory && !hasManufacturer) {
-      alert("Please confirm that you either have inventory ready or have a reliable manufacturer")
+    setStep1Error("")
+    if (!productReadiness) {
+      setStep1Error("Please select one of the options above to continue")
       return
     }
     setStep(2)
   }
 
   const handleContinueStep2 = () => {
-    // Only validate registration form if user is not logged in
-    if (!user && (!formData.name || !formData.email || !formData.password)) {
-      alert("Please fill in all fields")
-      return
-    }
+    setStep2Errors({})
+    // User is already logged in, so we can proceed directly
     setStep(3)
   }
 
   const handleCampaignFormSubmit = async (campaignData: CampaignFormData) => {
+    setSubmissionError("")
     setIsSubmittingCampaign(true)
     try {
       const token = localStorage.getItem("auth_token")
@@ -118,21 +119,47 @@ export default function LaunchCampaignPage() {
         funding_goal: 5000, // Default funding goal
         product_name: campaignData.productName,
         product_description: campaignData.productDescription,
-        materials: campaignData.materials.filter(m => m.trim()),
+        materials: campaignData.materials
+          .filter(m => m.name.trim() && m.percentage.trim())
+          .map(m => ({
+            name: m.name.trim(),
+            percentage: parseFloat(m.percentage.trim())
+          })),
         colors: campaignData.colors.filter(c => c.trim()),
-        sizes: campaignData.sizes.filter(s => s.size.trim()),
+        sizes: campaignData.sizes
+          .filter(s => s.measurement.trim())
+          .map(s => ({
+            classification: s.classification || "",
+            measurement: s.measurement.trim(),
+            sizeKey: s.sizeKey
+          })),
         projectDuration: campaignData.projectDuration,
+        upvote_goal: campaignData.upvoteGoal,
+        previous_sales: Array.isArray(campaignData.questionnaire.previousSalesChannels) ? campaignData.questionnaire.previousSalesChannels : [],
+        existing_inventory: campaignData.questionnaire.existingInventory ? [campaignData.questionnaire.existingInventory] : [],
+        manufacturer_restock: campaignData.questionnaire.manufacturerRestockTime ? [campaignData.questionnaire.manufacturerRestockTime] : [],
+        manufacturing_assistance: Array.isArray(campaignData.questionnaire.manufacturingAssistance) ? campaignData.questionnaire.manufacturingAssistance : [],
+        business_registration: campaignData.questionnaire.businessRegistration ? [campaignData.questionnaire.businessRegistration] : [],
       }
 
       console.log("[Campaign] Sending campaign payload:", {
         title: payload.title,
         hasImages: campaignData.productImages.length > 0,
         imageCount: campaignData.productImages.filter(img => img.file).length,
-        hasTechPack: !!campaignData.techPackFile,
         materialsCount: payload.materials.length,
         colorsCount: payload.colors.length,
         sizesCount: payload.sizes.length,
+        projectDuration: payload.projectDuration,
+        upvoteGoal: payload.upvote_goal,
+        questionnaireFields: {
+          previous_sales: payload.previous_sales,
+          existing_inventory: payload.existing_inventory,
+          manufacturer_restock: payload.manufacturer_restock,
+          manufacturing_assistance: payload.manufacturing_assistance,
+          business_registration: payload.business_registration,
+        },
       })
+      console.log("[Campaign] Full payload:", JSON.stringify(payload, null, 2))
 
       let response;
       try {
@@ -171,6 +198,7 @@ export default function LaunchCampaignPage() {
           // Try to parse as JSON
           try {
             const errorData = JSON.parse(responseText)
+            console.error("[Campaign] Parsed error data:", errorData)
             errorMessage = errorData.error || errorData.message || errorMessage
             
             // Provide helpful error messages based on status code
@@ -181,9 +209,15 @@ export default function LaunchCampaignPage() {
             } else if (response.status === 422) {
               errorMessage = "Please fill in all required fields correctly."
               if (errorData.errors) {
-                errorMessage += "\n" + Object.entries(errorData.errors)
-                  .map(([field, msgs]: [string, any]) => `${field}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`)
+                const errorDetails = Object.entries(errorData.errors)
+                  .map(([field, msgs]: [string, any]) => {
+                    const fieldName = field.replace(/_/g, ' ')
+                    const message = Array.isArray(msgs) ? msgs.join(", ") : msgs
+                    return `${fieldName}: ${message}`
+                  })
                   .join("\n")
+                errorMessage += "\n" + errorDetails
+                console.error("[Campaign] Validation errors:", errorDetails)
               }
             } else if (response.status === 503) {
               // Backend server unreachable
@@ -217,10 +251,9 @@ export default function LaunchCampaignPage() {
       const campaignId = result?.campaign?.id || result?.id
       
       // Now upload files if they exist
-      if (campaignId && (campaignData.productImages.length > 0 || campaignData.techPackFile)) {
+      if (campaignId && campaignData.productImages.length > 0) {
         console.log("[Campaign] Uploading files for campaign:", campaignId)
         console.log("[Campaign] Images to upload:", campaignData.productImages.length)
-        console.log("[Campaign] Tech pack:", !!campaignData.techPackFile)
         console.log("[Campaign] All product images:", campaignData.productImages.map(img => ({ type: img.type, name: img.file?.name, fileExists: !!img.file, fileType: img.file?.type })))
         
         const uploadFormData = new FormData()
@@ -268,23 +301,6 @@ export default function LaunchCampaignPage() {
         if (imageMetadata.length > 0) {
           uploadFormData.append("image_metadata", JSON.stringify(imageMetadata))
           console.log("[Campaign] Image metadata sent:", imageMetadata)
-        }
-        
-        // Add tech pack
-        if (campaignData.techPackFile && campaignData.techPackFile instanceof File) {
-          console.log("[Campaign] Adding tech pack:", {
-            name: campaignData.techPackFile.name,
-            size: campaignData.techPackFile.size,
-            type: campaignData.techPackFile.type,
-            isFile: campaignData.techPackFile instanceof File
-          })
-          uploadFormData.append("tech_pack_file", campaignData.techPackFile)
-        } else if (campaignData.techPackFile) {
-          const file = campaignData.techPackFile
-          console.warn("[Campaign] Tech pack exists but is not a valid File object", {
-            fileType: typeof file,
-            isFile: typeof file === 'object' && file !== null
-          })
         }
         
         console.log("[Campaign] FormData prepared with", successfullyAddedFiles, "images")
@@ -375,24 +391,24 @@ export default function LaunchCampaignPage() {
     } catch (error) {
       console.error("Error submitting campaign form:", error)
       const errorMessage = error instanceof Error ? error.message : "Failed to create campaign"
-      alert(errorMessage)
+      setSubmissionError(errorMessage)
     } finally {
       setIsSubmittingCampaign(false)
     }
   }
 
   const handleSubmit = () => {
+    setStep3Error("")
     if (
       !disclosures.collaborationAgreement ||
       !disclosures.termsAndConditions ||
       !disclosures.ageConfirmation
     ) {
-      alert("Please agree to all terms and conditions")
+      setStep3Error("Please agree to all terms and conditions")
       return
     }
 
-    alert("Campaign submitted successfully! Your campaign is now under review.")
-    router.push("/dashboard")
+    router.push("/dashboard/campaigns")
   }
 
   // Progress indicator component
@@ -422,34 +438,30 @@ export default function LaunchCampaignPage() {
               <div className="border-t pt-8 space-y-6">
                 <p className="font-bold text-neutral-900">Which of the following applies to your product?</p>
 
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="readiness"
-                    checked={hasInventory}
-                    onCheckedChange={(checked) => setHasInventory(checked as boolean)}
-                  />
-                  <Label htmlFor="readiness" className="text-base cursor-pointer">I have finished inventory ready to ship immediately </Label>
-                </div>
+                <RadioGroup value={productReadiness} onValueChange={(value) => setProductReadiness(value as "inventory" | "manufacturer" | "tech-pack")}>
+                  <div className="flex items-center space-x-3">
+                    <RadioGroupItem value="inventory" id="readiness" />
+                    <Label htmlFor="readiness" className="text-base cursor-pointer">I have finished inventory ready to ship immediately </Label>
+                  </div>
 
-                <div className="flex items-center space-x-3"> 
-                  <Checkbox
-                    id="inventory"
-                    checked={hasManufacturer}
-                    onCheckedChange={(checked) => setHasManufacturer(checked as boolean)}
-                  />
-                  <Label htmlFor="inventory" className="text-base cursor-pointer">I have a confirmed manufacturer and production timeline</Label>
-                </div>
+                  <div className="flex items-center space-x-3"> 
+                    <RadioGroupItem value="manufacturer" id="inventory" />
+                    <Label htmlFor="inventory" className="text-base cursor-pointer">I have a confirmed manufacturer and production timeline</Label>
+                  </div>
 
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="techpack"
-                    checked={hasTechPack}
-                    onCheckedChange={(checked) => setHasTechPack(checked as boolean)}
-                  />
-                  <Label htmlFor="techpack" className="text-base cursor-pointer">I need help finding a manufacturer or creating a tech pack </Label>
-                </div>
+                  <div className="flex items-center space-x-3">
+                    <RadioGroupItem value="tech-pack" id="techpack" />
+                    <Label htmlFor="techpack" className="text-base cursor-pointer">I need help finding a manufacturer or creating a tech pack </Label>
+                  </div>
+                </RadioGroup>
 
               </div>
+
+              {step1Error && (
+                <div className="border-l-4 border-red-500 bg-red-50 p-4">
+                  <p className="text-sm text-red-600">{step1Error}</p>
+                </div>
+              )}
 
               {/* Warning/Note Section */}
               <div className="border-l-4 border-red-600 bg-red-50 p-6 space-y-3">
@@ -467,16 +479,6 @@ export default function LaunchCampaignPage() {
               >
                 Continue
               </Button>
-
-              {/* Login Link for Existing Users */}
-              <div className="text-center pt-4 border-t">
-                <p className="text-neutral-600 mb-3">Already have an account?</p>
-                <Link href="/login">
-                  <Button variant="outline" className="w-full h-11 font-semibold">
-                    Sign In
-                  </Button>
-                </Link>
-              </div>
             </div>
           )}
 
@@ -487,52 +489,19 @@ export default function LaunchCampaignPage() {
               <ProgressBar currentStep={2} />
 
               <div className="space-y-6">
-                {/* Show registration form only if user is not logged in */}
-                {!user && (
-                  <>
-                    <div>
-                      <Label htmlFor="name" className="font-semibold text-base">Name*</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        placeholder="Enter your full name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className="mt-2 bg-neutral-50"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="email" className="font-semibold text-base">Email address*</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="mt-2 bg-neutral-50"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="password" className="font-semibold text-base">Password*</Label>
-                      <Input
-                        id="password"
-                        name="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        className="mt-2 bg-neutral-50"
-                      />
-                    </div>
-                  </>
-                )}
+                {/* Show user info message - user is already logged in */}
+                <div className="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-600">
+                  <p>✓ Logged in as creator</p>
+                </div>
 
                 {/* Campaign Launch Form */}
-                <div className="border-t pt-8 space-y-6">
+                <div className="pt-8 space-y-6">
                   <h2 className="text-2xl font-semibold">Campaign Details</h2>
+                  {submissionError && (
+                    <div className="border-l-4 border-red-500 bg-red-50 p-4">
+                      <p className="text-sm text-red-600">{submissionError}</p>
+                    </div>
+                  )}
                   <CampaignLaunchForm 
                     onSubmit={handleCampaignFormSubmit}
                     isLoading={isSubmittingCampaign}
@@ -585,6 +554,12 @@ export default function LaunchCampaignPage() {
                   </Label>
                 </div>
               </div>
+
+              {step3Error && (
+                <div className="border-l-4 border-red-500 bg-red-50 p-4">
+                  <p className="text-sm text-red-600">{step3Error}</p>
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <Button 

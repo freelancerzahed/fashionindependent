@@ -74,8 +74,28 @@ class CampaignController extends Controller
                 'materials' => 'nullable|array',
                 'colors' => 'nullable|array',
                 'sizes' => 'nullable|array',
-                'projectDuration' => 'nullable|integer|min:30|max:60',
+                'projectDuration' => 'nullable|integer|min:7|max:20',
+                'upvote_goal' => 'nullable|integer|min:1000',
+                'previous_sales' => 'nullable|array',
+                'existing_inventory' => 'nullable|array',
+                'manufacturer_restock' => 'nullable|array',
+                'manufacturing_assistance' => 'nullable|array',
+                'business_registration' => 'nullable|array',
             ];
+
+            // Log the incoming request for debugging
+            Log::info('Campaign creation request received', [
+                'user_id' => $user->id,
+                'request_keys' => array_keys($request->all()),
+                'title' => $request->input('title'),
+                'product_name' => $request->input('product_name'),
+                'description_length' => strlen((string)$request->input('description', '')),
+                'materials_count' => count((array)$request->input('materials', [])),
+                'colors_count' => count((array)$request->input('colors', [])),
+                'sizes_count' => count((array)$request->input('sizes', [])),
+                'projectDuration' => $request->input('projectDuration'),
+                'upvote_goal' => $request->input('upvote_goal'),
+            ]);
 
             $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
@@ -86,7 +106,7 @@ class CampaignController extends Controller
                 return response()->json([
                     'status' => false,
                     'message' => 'Validation failed',
-                    'errors' => $validator->errors()
+                    'errors' => $validator->errors()->toArray()
                 ], 422);
             }
 
@@ -103,7 +123,14 @@ class CampaignController extends Controller
                 'materials' => $request->materials ?? null,
                 'colors' => $request->colors ?? null,
                 'sizes' => $request->sizes ?? null,
-                'days_active' => $request->projectDuration ?? 90,
+                'days_active' => $request->projectDuration ?? 14,
+                'upvote_goal' => $request->upvote_goal ?? 5000,
+                'upvote_count' => 0,
+                'previous_sales' => $request->previous_sales ?? null,
+                'existing_inventory' => $request->existing_inventory ?? null,
+                'manufacturer_restock' => $request->manufacturer_restock ?? null,
+                'manufacturing_assistance' => $request->manufacturing_assistance ?? null,
+                'business_registration' => $request->business_registration ?? null,
             ]);
 
             Log::info('Campaign created successfully', [
@@ -924,10 +951,48 @@ class CampaignController extends Controller
                 ], 403);
             }
 
+            // Add validation for fields
+            $rules = [
+                'title' => 'sometimes|string|max:255',
+                'description' => 'sometimes|string',
+                'funding_goal' => 'sometimes|numeric|min:0.01',
+                'product_name' => 'sometimes|string|max:255',
+                'product_description' => 'sometimes|string',
+                'materials' => 'sometimes|array',
+                'colors' => 'sometimes|array',
+                'sizes' => 'sometimes|array',
+                'days_active' => 'sometimes|integer|min:7|max:20',
+                'status' => 'sometimes|string|in:draft,live,completed,failed',
+                'end_date' => 'sometimes|date',
+                'upvote_goal' => 'sometimes|integer|min:1000',
+                'upvote_count' => 'sometimes|integer|min:0',
+                'previous_sales' => 'sometimes|array',
+                'existing_inventory' => 'sometimes|array',
+                'manufacturer_restock' => 'sometimes|array',
+                'manufacturing_assistance' => 'sometimes|array',
+                'business_registration' => 'sometimes|array',
+            ];
+
+            $validator = Validator::make($request->all(), $rules);
+            if ($validator->fails()) {
+                Log::warning('Campaign update validation failed', [
+                    'campaign_id' => $campaignId,
+                    'errors' => $validator->errors()->toArray()
+                ]);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()->toArray()
+                ], 422);
+            }
+
             // Update allowed fields
             $allowed = [
                 'title', 'description', 'funding_goal', 'product_name',
-                'product_description', 'materials', 'colors', 'sizes', 'days_active', 'status', 'end_date'
+                'product_description', 'materials', 'colors', 'sizes', 'days_active', 
+                'status', 'end_date', 'upvote_goal', 'upvote_count',
+                'previous_sales', 'existing_inventory', 'manufacturer_restock', 
+                'manufacturing_assistance', 'business_registration'
             ];
 
             $data = [];

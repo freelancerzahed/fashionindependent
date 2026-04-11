@@ -154,7 +154,10 @@ export async function POST(request: NextRequest) {
         const errorData = JSON.parse(responseText);
         console.log("[Campaign] Parsed error data:", errorData);
         return NextResponse.json(
-          { error: errorData.message || errorData.error || "Failed to create campaign" },
+          { 
+            error: errorData.message || errorData.error || "Failed to create campaign",
+            errors: errorData.errors || errorData.errors
+          },
           { status: response.status }
         );
       } catch {

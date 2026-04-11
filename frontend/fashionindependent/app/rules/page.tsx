@@ -38,7 +38,7 @@ export default function RulesPage() {
 
                   <div className="mt-6">
                     <h3 className="font-semibold text-xl mb-2">Campaign Duration</h3>
-                    <p>Campaigns run for 7–30 days. Designers can adjust the campaign duration based on their goals and market feedback.</p>
+                    <p>Campaigns run for 7–20 days (recommended: 14 days). Designers can adjust the campaign duration based on their goals and market feedback.</p>
                   </div>
 
                   <div className="mt-6">

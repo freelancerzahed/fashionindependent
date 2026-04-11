@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -45,6 +46,7 @@ export default function CampaignsPage() {
     colors: false,
     techPack: false,
   })
+  const router = useRouter()
 
   // Helper function to get authorization token
   const getAuthToken = () => {
@@ -203,76 +205,7 @@ export default function CampaignsPage() {
 
   // Handle Edit Campaign
   const handleEditCampaign = (campaign: any) => {
-    setEditingCampaignId(campaign.id)
-    
-    // Reset file states
-    setFrontImageFile(null)
-    setBackImageFile(null)
-    setTechPackFile(null)
-    
-    // Ensure sizes is an array
-    let sizesArray: string[] = []
-    if (campaign.sizes) {
-      if (typeof campaign.sizes === "string") {
-        sizesArray = campaign.sizes.split(",").map((s: string) => s.trim()).filter(Boolean)
-      } else if (Array.isArray(campaign.sizes)) {
-        sizesArray = campaign.sizes
-      }
-    }
-    
-    // Ensure colors is an array
-    let colorsArray: string[] = []
-    if (campaign.colors) {
-      if (typeof campaign.colors === "string") {
-        colorsArray = campaign.colors.split(",").map((c: string) => c.trim()).filter(Boolean)
-      } else if (Array.isArray(campaign.colors)) {
-        colorsArray = campaign.colors
-      }
-    }
-    
-    // Get image preview URLs - convert to API route format if needed
-    let frontImageUrl = ""
-    let backImageUrl = ""
-    
-    if (campaign.product_images && Array.isArray(campaign.product_images)) {
-      const frontImg = campaign.product_images.find((img: any) => img.type === "front")
-      const backImg = campaign.product_images.find((img: any) => img.type === "back")
-      if (frontImg && frontImg.path) {
-        frontImageUrl = `/api/storage/${frontImg.path}`
-      }
-      if (backImg && backImg.path) {
-        backImageUrl = `/api/storage/${backImg.path}`
-      }
-    }
-    
-    // Get tech pack URL - convert to API route format if needed
-    let techPackUrl = ""
-    // Try both field names (camelCase and snake_case)
-    const techPackFileField = campaign.techPackUrl || campaign.tech_pack_file
-    if (techPackFileField) {
-      // If it's already a full path like campaigns/tech-packs/file.pdf, use API route
-      if (!techPackFileField.startsWith("/api")) {
-        techPackUrl = `/api/storage/${techPackFileField}`
-      } else {
-        techPackUrl = techPackFileField
-      }
-    }
-    
-    setEditFormData({
-      title: campaign.title,
-      description: campaign.description,
-      fundingGoal: campaign.fundingGoal,
-      daysLeft: campaign.daysLeft,
-      category: campaign.category,
-      image: campaign.image || frontImageUrl,
-      imageBack: campaign.imageBack || backImageUrl || "",
-      techPackUrl: techPackUrl,
-      sizes: sizesArray,
-      colors: colorsArray,
-      status: campaign.status === "live" ? "live" : "draft",
-    })
-    setImagePreview(campaign.image || frontImageUrl || null)
-    setImageBackPreview(campaign.imageBack || backImageUrl || null)
+    router.push(`/campaign/${campaign.id}/edit`)
   }
 
   // Handle Image Upload (Front)
@@ -650,8 +583,8 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {/* Edit Campaign Modal */}
-      {editingCampaignId && (
+      {/* Edit Campaign Modal - REMOVED: Users now navigate to dedicated edit page */}
+      {false && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-3xl max-h-[95vh] overflow-y-auto">
             <div className="p-8">
