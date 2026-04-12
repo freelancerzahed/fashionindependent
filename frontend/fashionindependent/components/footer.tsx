@@ -90,17 +90,17 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Fashion Resources</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/dashboard" className="text-sm text-neutral-300 hover:text-white">
+                <Link href="/find-a-job" className="text-sm text-neutral-300 hover:text-white">
                   Find a Job
                 </Link>
               </li>
               <li>
-                <Link href="/creator-portal" className="text-sm text-neutral-300 hover:text-white">
+                <Link href="/hire-a-professional" className="text-sm text-neutral-300 hover:text-white">
                   Hire a Professional
                 </Link>
               </li>
               <li>
-                <Link href="/affiliate" className="text-sm text-neutral-300 hover:text-white">
+                <Link href="/marketplace" className="text-sm text-neutral-300 hover:text-white">
                   Marketplace
                 </Link>
               </li>

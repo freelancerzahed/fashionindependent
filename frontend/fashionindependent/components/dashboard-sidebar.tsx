@@ -16,7 +16,7 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
   const creatorTabs = [
     { id: "overview", label: "Overview", href: "/dashboard" },
     { id: "campaigns", label: "Campaigns", href: "/dashboard/campaigns" },
-    { id: "backers", label: "Backers", href: "/dashboard/backers" },
+    { id: "analytics", label: "Analytics", href: "/dashboard/analytics" },
     { id: "settings", label: "Settings", href: "/dashboard/settings" },
     { id: "documents", label: "Documents", href: "/dashboard/documents" },
   ]

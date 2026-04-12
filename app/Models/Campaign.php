@@ -98,6 +98,22 @@ class Campaign extends Model
     }
 
     /**
+     * Get all feedback for this campaign.
+     */
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(CampaignFeedback::class);
+    }
+
+    /**
+     * Get all questions for this campaign.
+     */
+    public function questions(): HasMany
+    {
+        return $this->hasMany(CampaignQuestion::class);
+    }
+
+    /**
      * Check if campaign is currently active.
      */
     public function isActive(): bool

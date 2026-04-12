@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { DashboardRecentCampaigns } from "@/components/dashboard-recent-campaigns"
-import { ArrowRight, Heart, DollarSign, Clock, RefreshCw, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowRight, Heart, DollarSign, Clock, AlertCircle, Loader2 } from "lucide-react"
 import { BACKEND_URL } from "@/config"
 
 export const dynamic = "force-dynamic"
@@ -19,7 +19,17 @@ export default function DashboardPage() {
 
   // Creator state
   const [campaigns, setCampaigns] = useState<any[]>([])
-  const [creatorStats, setCreatorStats] = useState({ totalCampaigns: 0, totalEarnings: 0, totalBackers: 0 })
+  const [creatorStats, setCreatorStats] = useState({ 
+    totalCampaigns: 0, 
+    totalEarnings: 0, 
+    totalBackers: 0,
+    activeCampaigns: 0,
+    activeSales: 0,
+    activeShowcases: 0,
+    recentlyClosed: 0,
+    totalDonations: 0,
+    outboundBounces: 0
+  })
   const [creatorLoading, setCreatorLoading] = useState(true)
   const [creatorError, setCreatorError] = useState("")
   
@@ -60,10 +70,36 @@ export default function DashboardPage() {
         const totalEarnings = data.data.reduce((sum: number, c: any) => sum + (c.funded_amount || 0), 0)
         const totalBackers = data.data.reduce((sum: number, c: any) => sum + (c.backers_count || 0), 0)
         
+        // Active campaigns: campaigns with days_remaining > 0 or status === 'active'
+        const activeCampaigns = data.data.filter((c: any) => c.days_remaining > 0 || c.status === 'active').length
+        
+        // Active sales: sum of funded_amount for active campaigns
+        const activeSales = data.data
+          .filter((c: any) => c.days_remaining > 0 || c.status === 'active')
+          .reduce((sum: number, c: any) => sum + (c.funded_amount || 0), 0)
+        
+        // Active showcases: campaigns with showcase status
+        const activeShowcases = data.data.filter((c: any) => c.status === 'showcase' || c.is_featured).length
+        
+        // Recently closed: campaigns with days_remaining = 0 or status === 'closed'
+        const recentlyClosed = data.data.filter((c: any) => (c.days_remaining === 0 || c.status === 'closed') && c.updated_at).length
+        
+        // Total donations: all individual pledges across all campaigns
+        const totalDonations = data.data.reduce((sum: number, c: any) => sum + (c.pledges_count || 0), 0)
+        
+        // Outbound bounces: estimate based on failed notifications (default to 0 if not tracked)
+        const outboundBounces = data.data.reduce((sum: number, c: any) => sum + (c.bounced_notifications || 0), 0)
+        
         setCreatorStats({
           totalCampaigns: data.data.length,
           totalEarnings,
           totalBackers,
+          activeCampaigns,
+          activeSales,
+          activeShowcases,
+          recentlyClosed,
+          totalDonations,
+          outboundBounces,
         })
         setLastUpdated(new Date())
       }
@@ -173,24 +209,13 @@ export default function DashboardPage() {
   if (user?.role === "creator") {
     return (
       <div className="space-y-8">
-        {/* Last Updated and Refresh Button */}
-        <div className="flex items-center justify-between">
-          <div>
-            {lastUpdated && (
-              <p className="text-sm text-muted-foreground">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </p>
-            )}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchCreatorData(true)}
-            disabled={creatorLoading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${creatorLoading ? "animate-spin" : ""}`} />
-            {creatorLoading ? "Refreshing..." : "Refresh"}
-          </Button>
+        {/* Last Updated */}
+        <div>
+          {lastUpdated && (
+            <p className="text-sm text-muted-foreground">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </p>
+          )}
         </div>
 
         {/* Error Alert */}
@@ -226,6 +251,58 @@ export default function DashboardPage() {
               conversionRate={conversionMetrics.avgConversionRate}
               totalBackers={creatorStats.totalBackers}
             />
+
+            {/* Additional Creator Stats - 6 Grid (2 rows × 3 columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-2">Active Campaigns</div>
+                  <div className="text-3xl font-bold">{creatorStats.activeCampaigns}</div>
+                  <p className="text-xs text-neutral-500 mt-2">Currently running</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-2">Active Sales</div>
+                  <div className="text-3xl font-bold">${creatorStats.activeSales.toLocaleString()}</div>
+                  <p className="text-xs text-neutral-500 mt-2">From active campaigns</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-2">Active Showcases</div>
+                  <div className="text-3xl font-bold">{creatorStats.activeShowcases}</div>
+                  <p className="text-xs text-neutral-500 mt-2">Featured campaigns</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-2">Recently Closed</div>
+                  <div className="text-3xl font-bold">{creatorStats.recentlyClosed}</div>
+                  <p className="text-xs text-neutral-500 mt-2">Ended campaigns</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-2">Total Donations</div>
+                  <div className="text-3xl font-bold">{creatorStats.totalDonations.toLocaleString()}</div>
+                  <p className="text-xs text-neutral-500 mt-2">Across all campaigns</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-2">Outbound Bounces</div>
+                  <div className="text-3xl font-bold">{creatorStats.outboundBounces}</div>
+                  <p className="text-xs text-neutral-500 mt-2">Failed notifications</p>
+                </CardContent>
+              </Card>
+            </div>
+
             <DashboardRecentCampaigns campaigns={campaigns} />
           </>
         )}
@@ -239,13 +316,18 @@ export default function DashboardPage() {
                   Launch New Campaign
                 </Button>
               </Link>
-              <Link href="/dashboard/body-model">
+              <Link href="/dashboard/profile">
                 <Button className="w-full" variant="outline">
                   <ArrowRight className="h-4 w-4 mr-2" />
                   View Profile
                 </Button>
               </Link>
- 
+              <Link href="/dashboard/analytics">
+                <Button className="w-full" variant="outline">
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  View Analytics
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -265,15 +347,6 @@ export default function DashboardPage() {
                 <h1 className="text-4xl font-bold mb-2">Backers Dashboard</h1>
                 <p className="text-muted-foreground">Manage your pledges and track your orders</p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchBackerData(true)}
-                disabled={backerLoading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${backerLoading ? "animate-spin" : ""}`} />
-                {backerLoading ? "Refreshing..." : "Refresh"}
-              </Button>
             </div>
             {lastUpdated && (
               <p className="text-sm text-muted-foreground mt-4">

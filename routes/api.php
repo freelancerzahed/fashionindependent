@@ -126,6 +126,11 @@ Route::group(['prefix' => 'v2/creator', 'middleware' => ['app_language']], funct
             Route::delete('documents/{id}', 'delete');
             Route::delete('documents/type/{type}', 'deleteByType');
         });
+
+        // Verification Routes
+        Route::controller(CreatorVerificationController::class)->group(function () {
+            Route::get('verification/checklist', 'getVerificationChecklist');
+        });
     });
 });
 
@@ -162,6 +167,18 @@ Route::group(['prefix' => 'v2/pledge', 'middleware' => ['app_language']], functi
     });
 });
 
+// Analytics Routes (FashionIndependent)
+Route::group(['prefix' => 'v2/analytics', 'middleware' => ['app_language']], function () {
+    // Health check - no auth required
+    Route::get('/health', [AnalyticsController::class, 'healthCheck']);
+    
+    Route::middleware(['parse_bearer_token', 'auth:sanctum'])->group(function () {
+        Route::controller(AnalyticsController::class)->group(function () {
+            Route::get('/creator', 'getCreatorAnalytics');  // Get analytics for creator's campaigns
+            Route::get('/campaign/{id}', 'getCampaignAnalytics');  // Get analytics for specific campaign
+        });
+    });
+});
 
 Route::group(['prefix' => 'v2', 'middleware' => ['app_language']], function () {
     Route::post('/posts', [PostController::class, 'store']); // create post

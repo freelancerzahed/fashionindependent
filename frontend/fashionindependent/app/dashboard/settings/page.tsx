@@ -377,8 +377,7 @@ export default function SettingsPage() {
             `Possible causes:\n` +
             `• Laragon server is not running\n` +
             `• Backend is not accessible at the configured URL\n` +
-            `• Network or firewall blocking the connection\n\n` +
-            `Click "Try Test Connection" above to verify backend availability.`
+            `• Network or firewall blocking the connection`
           )
         } else {
           setError(`Network error: ${err.message}`)
@@ -536,14 +535,6 @@ export default function SettingsPage() {
           {!editingSettings && !loading && (
             <>
               <Button 
-                onClick={testBackendConnection} 
-                variant="outline" 
-                size="sm"
-                title="Test if backend server is reachable"
-              >
-                🔗 Test Connection
-              </Button>
-              <Button 
                 onClick={handleManualRefresh} 
                 variant="outline" 
                 size="sm"
@@ -569,16 +560,6 @@ export default function SettingsPage() {
             <div className="flex-1">
               <p className="text-red-900 text-sm font-semibold">Error</p>
               <p className="text-red-800 text-sm whitespace-pre-wrap mt-1">{error}</p>
-              {error.includes("Failed to fetch") && (
-                <Button
-                  onClick={testBackendConnection}
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 text-xs border-red-300"
-                >
-                  🔗 Try Test Connection
-                </Button>
-              )}
             </div>
           </div>
         </Card>
