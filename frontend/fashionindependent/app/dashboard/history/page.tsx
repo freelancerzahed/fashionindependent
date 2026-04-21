@@ -1,6 +1,5 @@
 "use client"
 
-import { DashboardNav } from "@/components/dashboard-nav"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { PaymentHistory } from "@/components/payment-history"
@@ -23,22 +22,15 @@ export default function DonationHistoryPage() {
   }
 
   return (
-    <main className="flex-1 bg-neutral-50">
-      <section className="py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <DashboardNav />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Order History</h1>
+        <p className="text-sm sm:text-base text-slate-600">Track and manage your past orders and payments</p>
+      </div>
 
-            <div className="lg:col-span-3">
-              <div className="bg-white rounded-lg shadow-sm p-8">
-                <h1 className="text-2xl font-bold mb-6">Payment History</h1>
-
-                <PaymentHistory />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+      <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
+        <PaymentHistory />
+      </div>
+    </div>
   )
 }

@@ -58,7 +58,14 @@ async function fetchProducts(
     if (!contentType?.includes('application/json')) {
       const responseText = await response.text()
       console.error('[ShopPage] Non-JSON response:', responseText.substring(0, 200))
-      throw new Error(`Expected JSON but got ${contentType}: ${responseText.substring(0, 200)}`)
+      
+      // Check if it's a PHP error
+      if (responseText.includes('<b>Warning</b>') || responseText.includes('Fatal error')) {
+        console.error('[ShopPage] Backend PHP Error detected')
+        throw new Error('Backend server error: Please check the server logs. Run: composer dump-autoload')
+      }
+      
+      throw new Error(`Expected JSON but got ${contentType}`)
     }
 
     const data = await response.json()

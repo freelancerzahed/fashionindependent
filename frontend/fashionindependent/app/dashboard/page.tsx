@@ -2,20 +2,29 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useAnalytics } from "@/lib/analytics-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { DashboardRecentCampaigns } from "@/components/dashboard-recent-campaigns"
-import { ArrowRight, Heart, DollarSign, Clock, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowRight, AlertCircle, Loader2 } from "lucide-react"
 import { BACKEND_URL } from "@/config"
 
 export const dynamic = "force-dynamic"
 
 export default function DashboardPage() {
-  const { user, token } = useAuth()
+  const { user, token, isLoading } = useAuth()
+  const router = useRouter()
   const { getConversionMetrics } = useAnalytics()
+
+  // Redirect backers to their dashboard
+  useEffect(() => {
+    if (!isLoading && user?.role === "backer") {
+      router.push("/dashboard/backer")
+    }
+  }, [user, isLoading, router])
 
   // Creator state
   const [campaigns, setCampaigns] = useState<any[]>([])
@@ -32,12 +41,6 @@ export default function DashboardPage() {
   })
   const [creatorLoading, setCreatorLoading] = useState(true)
   const [creatorError, setCreatorError] = useState("")
-  
-  // Backer state
-  const [pledges, setPledges] = useState<any[]>([])
-  const [backerStats, setBackerStats] = useState({ totalPledged: 0, activePledges: 0, completedOrders: 0, savedCampaigns: 0 })
-  const [backerLoading, setBackerLoading] = useState(true)
-  const [backerError, setBackerError] = useState("")
   
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -70,24 +73,17 @@ export default function DashboardPage() {
         const totalEarnings = data.data.reduce((sum: number, c: any) => sum + (c.funded_amount || 0), 0)
         const totalBackers = data.data.reduce((sum: number, c: any) => sum + (c.backers_count || 0), 0)
         
-        // Active campaigns: campaigns with days_remaining > 0 or status === 'active'
+        // Active campaigns
         const activeCampaigns = data.data.filter((c: any) => c.days_remaining > 0 || c.status === 'active').length
         
-        // Active sales: sum of funded_amount for active campaigns
+        // Active sales
         const activeSales = data.data
           .filter((c: any) => c.days_remaining > 0 || c.status === 'active')
           .reduce((sum: number, c: any) => sum + (c.funded_amount || 0), 0)
         
-        // Active showcases: campaigns with showcase status
         const activeShowcases = data.data.filter((c: any) => c.status === 'showcase' || c.is_featured).length
-        
-        // Recently closed: campaigns with days_remaining = 0 or status === 'closed'
         const recentlyClosed = data.data.filter((c: any) => (c.days_remaining === 0 || c.status === 'closed') && c.updated_at).length
-        
-        // Total donations: all individual pledges across all campaigns
         const totalDonations = data.data.reduce((sum: number, c: any) => sum + (c.pledges_count || 0), 0)
-        
-        // Outbound bounces: estimate based on failed notifications (default to 0 if not tracked)
         const outboundBounces = data.data.reduce((sum: number, c: any) => sum + (c.bounced_notifications || 0), 0)
         
         setCreatorStats({
@@ -112,73 +108,12 @@ export default function DashboardPage() {
     }
   }, [token, user?.role])
 
-  // Fetch backer pledges
-  const fetchBackerData = useCallback(async (showLoading = true) => {
-    if (!token || user?.role !== "backer") return
-
-    if (showLoading) setBackerLoading(true)
-    setBackerError("")
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/pledge/user`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch pledges: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      
-      if (data.status && Array.isArray(data.data)) {
-        // Group pledges by campaign
-        const pledgesByUser = data.data.map((pledge: any) => ({
-          id: pledge.id,
-          campaignId: pledge.campaign_id,
-          campaignTitle: pledge.campaign?.title || "Unknown Campaign",
-          creatorName: pledge.campaign?.creator?.name || "Unknown Creator",
-          pledgeAmount: pledge.pledge_amount,
-          daysRemaining: pledge.campaign?.days_remaining || 0,
-          status: pledge.status || "Active",
-          image: pledge.campaign?.image || "/placeholder.svg",
-        }))
-        
-        setPledges(pledgesByUser)
-        
-        const totalPledged = pledgesByUser.reduce((sum: number, p: any) => sum + p.pledgeAmount, 0)
-        const activePledges = pledgesByUser.filter((p: any) => p.status === "Active").length
-        
-        setBackerStats({
-          totalPledged,
-          activePledges,
-          completedOrders: 0,
-          savedCampaigns: 0,
-        })
-        setLastUpdated(new Date())
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to load backer data"
-      console.error("Backer data error:", errorMessage)
-      setBackerError(errorMessage)
-    } finally {
-      setBackerLoading(false)
-    }
-  }, [token, user?.role])
-
   // Initial fetch on mount
   useEffect(() => {
-    if (token) {
-      if (user?.role === "creator") {
-        fetchCreatorData(true)
-      } else if (user?.role === "backer") {
-        fetchBackerData(true)
-      }
+    if (token && user?.role === "creator") {
+      fetchCreatorData(true)
     }
-  }, [token, user?.role, fetchCreatorData, fetchBackerData])
+  }, [token, user?.role, fetchCreatorData])
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
@@ -186,12 +121,8 @@ export default function DashboardPage() {
     let refreshTimer: NodeJS.Timeout
 
     const autoRefresh = () => {
-      if (isMounted) {
-        if (user?.role === "creator") {
-          fetchCreatorData(false)
-        } else if (user?.role === "backer") {
-          fetchBackerData(false)
-        }
+      if (isMounted && user?.role === "creator") {
+        fetchCreatorData(false)
       }
     }
 
@@ -201,13 +132,32 @@ export default function DashboardPage() {
       isMounted = false
       clearInterval(refreshTimer)
     }
-  }, [fetchCreatorData, fetchBackerData, user?.role])
+  }, [fetchCreatorData, user?.role])
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
+        <span className="ml-2 text-neutral-600">Loading dashboard...</span>
+      </div>
+    )
+  }
+
+  // If not a creator, don't render (layout will handle redirect)
+  if (!user || user.role !== "creator") {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
+        <span className="ml-2 text-neutral-600">Redirecting...</span>
+      </div>
+    )
+  }
 
   const conversionMetrics = getConversionMetrics()
 
   // CREATOR VIEW
-  if (user?.role === "creator") {
-    return (
+  return (
       <div className="space-y-8">
         {/* Last Updated */}
         <div>
@@ -333,142 +283,4 @@ export default function DashboardPage() {
         </Card>
       </div>
     )
-  }
-
-  // BACKER VIEW
-  if (user?.role === "backer") {
-    return (
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="border-b">
-          <div className="container py-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl font-bold mb-2">Backers Dashboard</h1>
-                <p className="text-muted-foreground">Manage your pledges and track your orders</p>
-              </div>
-            </div>
-            {lastUpdated && (
-              <p className="text-sm text-muted-foreground mt-4">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Error Alert */}
-        {backerError && (
-          <div className="border-b">
-            <div className="container py-6">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-semibold text-red-900">Error loading pledges</p>
-                  <p className="text-sm text-red-700">{backerError}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 text-red-600 hover:text-red-700"
-                    onClick={() => fetchBackerData(true)}
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {backerLoading && !pledges.length ? (
-          <div className="border-b">
-            <div className="container py-12 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
-              <span className="ml-2 text-neutral-600">Loading your pledges...</span>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Stats */}
-            <div className="border-b">
-              <div className="container py-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <Card className="p-6">
-                    <div className="text-sm text-muted-foreground mb-2">Total Pledged</div>
-                    <div className="text-3xl font-bold">${backerStats.totalPledged}</div>
-                  </Card>
-                  <Card className="p-6">
-                    <div className="text-sm text-muted-foreground mb-2">Active Pledges</div>
-                    <div className="text-3xl font-bold">{backerStats.activePledges}</div>
-                  </Card>
-                  <Card className="p-6">
-                    <div className="text-sm text-muted-foreground mb-2">Completed Orders</div>
-                    <div className="text-3xl font-bold">{backerStats.completedOrders}</div>
-                  </Card>
-                  <Card className="p-6">
-                    <div className="text-sm text-muted-foreground mb-2">Saved Campaigns</div>
-                    <div className="text-3xl font-bold">{backerStats.savedCampaigns}</div>
-                  </Card>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="container py-12">
-              <div className="space-y-6">
-                {pledges.length > 0 ? (
-                  pledges.map((pledge) => (
-                    <Card key={pledge.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                      <div className="flex flex-col md:flex-row">
-                        <div className="md:w-48 h-48 bg-muted flex-shrink-0">
-                          <img
-                            src={pledge.image}
-                            alt={pledge.campaignTitle}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="flex-1 p-6 flex flex-col justify-between">
-                          <div>
-                            <h3 className="text-xl font-bold mb-2">{pledge.campaignTitle}</h3>
-                            <p className="text-muted-foreground mb-4">by {pledge.creatorName}</p>
-                            <div className="flex gap-6 mb-4">
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="w-4 h-4" />
-                                <span className="font-semibold">${pledge.pledgeAmount}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                <span>{pledge.daysRemaining} days remaining</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-3">
-                            <Link href={`/campaign/${pledge.campaignId}`}>
-                              <Button variant="outline">View Product</Button>
-                            </Link>
-                            <Button variant="ghost" size="icon">
-                              <Heart className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                ) : (
-                  <Card className="p-8 text-center">
-                    <p className="text-muted-foreground mb-4">No active pledges yet</p>
-                    <Link href="/discover">
-                      <Button>Discover Campaigns</Button>
-                    </Link>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    )
-  }
-
-  return null
 }

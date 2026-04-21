@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -11,7 +13,8 @@ import { ApiDiagnosticsPanel } from "@/components/api-diagnostics-panel"
 import { Edit2, Plus, X, Loader, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react"
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
   const [editingSettings, setEditingSettings] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -39,16 +42,27 @@ export default function SettingsPage() {
     bankAccountNumber: "",
   })
 
-  // Fetch creator profile data
-  const fetchCreatorProfile = useCallback(async (showLoadingState = true) => {
+  // Redirect if not authenticated - but don't redirect based on role yet
+  useEffect(() => {
+    // Only redirect to login if auth is done loading AND there's definitely no user
+    if (!isLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isLoading, router])
+
+  // Fetch creator profile data - only for creators
+  const fetchCreatorProfile = useCallback(async (showLoadingState = false) => {
     try {
+      if (!user || user.role !== "creator") {
+        return
+      }
+
       if (showLoadingState) setLoading(true)
-      setError("")
+      
       const token = localStorage.getItem("auth_token")
       
       if (!token) {
-        setError("Authentication token not found. Please login again.")
-        setLoading(false)
+        console.warn("No auth token found")
         return
       }
 
@@ -65,9 +79,9 @@ export default function SettingsPage() {
       console.log("Creator profile response status:", response.status)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("API Error:", errorData)
-        throw new Error(errorData.message || `API Error: ${response.status}`)
+        console.warn("Profile fetch failed:", response.status)
+        // Don't show error for background fetch - just keep original data
+        return
       }
 
       const data = await response.json()
@@ -78,8 +92,8 @@ export default function SettingsPage() {
         const newData = {
           fullName: user?.name || "",
           email: user?.email || "",
-          phone: user?.phone || "",
-          mailingAddress: user?.address || "",
+          phone: creator?.phone || "",
+          mailingAddress: creator?.address || "",
           businessName: creator.brand_name || "",
           about: creator.bio || creator.about || "",
           einNumber: "",
@@ -95,26 +109,33 @@ export default function SettingsPage() {
         setLastUpdated(new Date())
         setHasUnsavedChanges(false)
         console.log("Profile loaded successfully")
-      } else {
-        throw new Error(data.message || "Failed to load creator profile")
       }
     } catch (err) {
-      console.error("Error fetching creator profile:", err)
-      setError(err instanceof Error ? err.message : "Failed to load settings")
+      console.warn("Error fetching creator profile:", err)
+      // Don't show error for background fetch
     } finally {
+      if (showLoadingState) setLoading(false)
+    }
+  }, [user?.name, user?.email, user?.role])
+
+  // Initial fetch on mount - only for creators (non-blocking)
+  useEffect(() => {
+    if (user && user.role === "creator") {
+      // Don't show loading state - just fetch in background
+      fetchCreatorProfile(false)
+      setLoading(false) // Show form immediately
+    } else if (!isLoading && user) {
       setLoading(false)
     }
-  }, [user?.name, user?.email, user?.phone, user?.address])
+  }, [user?.role, isLoading, fetchCreatorProfile])
 
-  // Initial fetch on mount
+  // Auto-refresh profile every 30 seconds (separate from main fetch) - only for creators
   useEffect(() => {
-    if (user) {
-      fetchCreatorProfile()
+    // Only for creators
+    if (!user || user.role !== "creator") {
+      return
     }
-  }, []) // Only run once on mount - empty dependency array
 
-  // Auto-refresh profile every 30 seconds (separate from main fetch)
-  useEffect(() => {
     // Don't set up auto-refresh while editing
     if (editingSettings || hasUnsavedChanges) {
       return
@@ -144,8 +165,8 @@ export default function SettingsPage() {
               const newData = {
                 fullName: user?.name || "",
                 email: user?.email || "",
-                phone: user?.phone || "",
-                mailingAddress: user?.address || "",
+                phone: creator?.phone || "",
+                mailingAddress: creator?.address || "",
                 businessName: creator.brand_name || "",
                 about: creator.bio || creator.about || "",
                 einNumber: "",
@@ -174,7 +195,7 @@ export default function SettingsPage() {
       isMounted = false
       clearInterval(refreshTimer)
     }
-  }, [editingSettings, hasUnsavedChanges, user])
+  }, [editingSettings, hasUnsavedChanges, user?.role, user?.email, user?.name])
 
   const handleSettingsChange = (field: string, value: any) => {
     setSettingsData((prev) => ({
@@ -341,14 +362,23 @@ export default function SettingsPage() {
       console.log("Save response text:", responseText)
 
       if (!response.ok) {
+        const contentType = response.headers.get("content-type")
+        let errorData: any = { message: `API Error: ${response.status}` }
+        
         try {
-          const errorData = JSON.parse(responseText)
-          console.error("Save API Error (parsed):", errorData)
-          throw new Error(errorData.message || `API Error: ${response.status} ${response.statusText}`)
+          // Only try to parse as JSON if response is JSON
+          if (contentType?.includes("application/json")) {
+            errorData = JSON.parse(responseText)
+          } else {
+            errorData = { message: `Server error: ${response.status} ${response.statusText}` }
+          }
         } catch (parseErr) {
-          console.error("Save API Error (could not parse):", responseText)
-          throw new Error(`API Error: ${response.status} ${response.statusText} - ${responseText}`)
+          console.error("Could not parse error response:", responseText)
+          errorData = { message: `Server error: ${response.status} ${response.statusText}` }
         }
+        
+        console.error("Save API Error:", errorData)
+        throw new Error(errorData.message || `Save failed: ${response.status}`)
       }
 
       const data = JSON.parse(responseText)
@@ -510,6 +540,27 @@ export default function SettingsPage() {
     }
   }
 
+
+  // Show loading state while authenticating
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <Loader className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-600" />
+          <p className="text-neutral-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only render for authenticated users
+  if (!user) {
+    return null
+  }
+
+  // For non-creators, show the creator settings anyway 
+  // (they can't save, but can see the form)
+  // If you want to restrict access, handle it at the layout level
 
   return (
     <div className="space-y-6">

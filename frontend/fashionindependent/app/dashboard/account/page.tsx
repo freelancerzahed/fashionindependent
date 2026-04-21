@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState } from "react"
-import { DashboardNav } from "@/components/dashboard-nav"
 import { ProfilePictureUpload } from "@/components/profile-picture-upload"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,15 +44,13 @@ export default function AccountPage() {
   }
 
   return (
-    <main className="flex-1 bg-neutral-50">
-      <section className="py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <DashboardNav />
+    <div>
+      <div className="mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2">Account Information</h1>
+        <p className="text-sm sm:text-base text-slate-600">Manage your profile and account settings</p>
+      </div>
 
-            <div className="lg:col-span-3">
-              <div className="bg-white rounded-lg shadow-sm p-8">
-                <h1 className="text-2xl font-bold mb-8">Account Information</h1>
+      <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
 
                 <div className="mb-8 pb-8 border-b">
                   <h2 className="text-lg font-semibold mb-4">Profile Picture</h2>
@@ -93,11 +90,7 @@ export default function AccountPage() {
                     <Button onClick={handleSave}>Save Changes</Button>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+      </div>
+    </div>
   )
 }

@@ -1,0 +1,62 @@
+[2026-04-21 14:23:29] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/pledge/user","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 163|wuFh1qiVsJA93LsN7gf...","is_bearer":true} 
+[2026-04-21 14:23:29] local.INFO: Extracted bearer token {"token_preview":"163|wuFh1q...","token_length":52} 
+[2026-04-21 14:23:29] local.INFO: Found personal access token {"token_id":163,"user_id":69,"revoked":null} 
+[2026-04-21 14:23:29] local.INFO: User authenticated via bearer token {"user_id":69,"user_email":"deomoback@gmail.com"} 
+[2026-04-21 14:23:31] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/pledge/user","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 163|wuFh1qiVsJA93LsN7gf...","is_bearer":true} 
+[2026-04-21 14:23:31] local.INFO: Extracted bearer token {"token_preview":"163|wuFh1q...","token_length":52} 
+[2026-04-21 14:23:31] local.INFO: Found personal access token {"token_id":163,"user_id":69,"revoked":null} 
+[2026-04-21 14:23:31] local.INFO: User authenticated via bearer token {"user_id":69,"user_email":"deomoback@gmail.com"} 
+[2026-04-21 14:24:12] local.DEBUG: reCAPTCHA enabled: false  
+[2026-04-21 14:24:16] local.DEBUG: reCAPTCHA enabled: false  
+[2026-04-21 14:24:21] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:21] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:21] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:21] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:21] local.INFO: Returning campaigns for user {"user_id":68,"campaign_count":2,"statuses":["draft","draft"]} 
+[2026-04-21 14:24:24] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:24] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:24] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:24] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:24] local.INFO: Returning campaigns for user {"user_id":68,"campaign_count":2,"statuses":["draft","draft"]} 
+[2026-04-21 14:24:33] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:33] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:33] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:33] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:33] local.INFO: Returning campaigns for user {"user_id":68,"campaign_count":2,"statuses":["draft","draft"]} 
+[2026-04-21 14:24:34] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:34] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:34] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:34] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:34] local.INFO: Returning campaigns for user {"user_id":68,"campaign_count":2,"statuses":["draft","draft"]} 
+[2026-04-21 14:24:41] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/analytics/creator","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:41] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:42] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:42] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:43] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/analytics/creator","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:43] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:43] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:43] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:47] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/profile","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:47] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:47] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:47] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:49] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/profile","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:49] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:49] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:49] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:52] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/verification/checklist","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:52] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:52] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:52] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:52] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:52] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:52] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:52] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:54] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/verification/checklist","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:54] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:54] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:54] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
+[2026-04-21 14:24:54] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/creator/documents","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 165|jqUnqgEkKhwx3fexQub...","is_bearer":true} 
+[2026-04-21 14:24:54] local.INFO: Extracted bearer token {"token_preview":"165|jqUnqg...","token_length":52} 
+[2026-04-21 14:24:54] local.INFO: Found personal access token {"token_id":165,"user_id":68,"revoked":null} 
+[2026-04-21 14:24:54] local.INFO: User authenticated via bearer token {"user_id":68,"user_email":"freelancerzahedcreator@gmail.com"} 
