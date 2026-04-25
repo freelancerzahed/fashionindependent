@@ -150,12 +150,12 @@ export default function BlogPageClient({ initialBlogs = [] }: { initialBlogs?: B
         ) : null}
 
         {/* Blog Articles Grid */}
-        {blogs.length > 1 ? (
+        {blogs.length ? (
           <section className="py-12 bg-white">
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold mb-8">Latest Articles</h2>
               <div className="grid md:grid-cols-3 gap-8">
-                {blogs.slice(1).map((blog) => (
+                {blogs.map((blog) => (
                   <Card key={blog.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="aspect-[4/3] bg-neutral-200">
                       <img

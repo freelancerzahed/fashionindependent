@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import BlogPageClient from "@/components/blog-page-client"
 
-// Revalidate every 1 hour (3600 seconds) for ISR
-export const revalidate = 3600
+// Revalidate every 5 minutes (300 seconds) for ISR to get latest articles
+export const revalidate = 300
 
 interface BlogPost {
   id: string | number

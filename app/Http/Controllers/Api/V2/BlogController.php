@@ -15,9 +15,9 @@ class BlogController extends Controller
         $selected_categories = array();
         $search = null;
         
-        // Optimize query with eager loading and column selection
+        // Build base query without select first to avoid pagination issues
         $blogs = Blog::with('category:id,category_name')
-            ->select('id', 'title', 'slug', 'short_description', 'banner', 'category_id', 'status', 'created_at');
+            ->where('status', 1);
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -44,9 +44,16 @@ class BlogController extends Controller
             $blogs->whereIn('category_id', $blog_categories);
         }
 
-        $blogs = $blogs->where('status', 1)->orderBy('created_at', 'desc')->paginate(12);
+        // Apply ordering only if not from search
+        if (!$request->has('search')) {
+            $blogs->orderBy('created_at', 'desc');
+        }
 
-        // Optimize recent blogs query with pagination and eager loading
+        // Now select columns and paginate
+        $blogs = $blogs->select('id', 'title', 'slug', 'short_description', 'banner', 'category_id', 'status', 'created_at')
+            ->paginate(12);
+
+        // Fetch recent blogs separately
         $recent_blogs = Blog::with('category:id,category_name')
             ->select('id', 'title', 'slug', 'short_description', 'banner', 'category_id', 'status', 'created_at')
             ->where('status', 1)
