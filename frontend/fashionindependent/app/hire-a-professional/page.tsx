@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import HiringForm from "./HiringForm"
 
 export default function HireAProfessionalPage() {
   const professionTypes = [
@@ -28,77 +29,34 @@ export default function HireAProfessionalPage() {
         </div>
       </section>
 
-      {/* How It Works */}
+
+      {/* Two Column Layout */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold mb-12 text-center">Find the Right Professionals</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {professionTypes.map((type, index) => (
-                <div key={index} className="border rounded-lg p-6 hover:shadow-lg transition">
-                  <h3 className="font-semibold text-lg mb-2">{type.title}</h3>
-                  <p className="text-neutral-600 text-sm mb-4">{type.description}</p>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/launch-campaign">Browse Professionals</Link>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Process Section */}
-      <section className="py-16 bg-neutral-50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold mb-12 text-center">Our Process</h2>
-            <div className="space-y-8">
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-md bg-black text-white font-bold">
-                    1
-                  </div>
-                </div>
+          <div className="mx-auto">
+            <div className="flex gap-6">
+              <div className="w-1/5 pr-6">
+                {/* Left Column: How It Works */}
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Define Your Needs</h3>
-                  <p className="text-neutral-600">Tell us what you're looking for and your project details</p>
+                  <h2 className="text-3xl font-bold mb-12">Find the Right Professionals</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+                    {professionTypes.map((type, index) => (
+                      <div key={index} className="border rounded-lg p-6 hover:shadow-lg transition">
+                        <h3 className="font-semibold text-lg mb-2">{type.title}</h3>
+                        <p className="text-neutral-600 text-sm mb-4">{type.description}</p>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href="/launch-campaign">Browse Professionals</Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-md bg-black text-white font-bold">
-                    2
-                  </div>
-                </div>
+              <div className="w-4/5 space-y-6">
+                {/* Right Column: Our Process */}
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Browse Professionals</h3>
-                  <p className="text-neutral-600">Explore portfolios and connect with qualified candidates</p>
-                </div>
-              </div>
-
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-md bg-black text-white font-bold">
-                    3
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Collaborate & Create</h3>
-                  <p className="text-neutral-600">Work together to bring your fashion vision to life</p>
-                </div>
-              </div>
-
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-md bg-black text-white font-bold">
-                    4
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold mb-2">Launch Your Campaign</h3>
-                  <p className="text-neutral-600">Bring your designs to market and measure success</p>
+                  <h2 className="text-3xl font-bold mb-12">Our Process</h2>
+                  <HiringForm />
                 </div>
               </div>
             </div>

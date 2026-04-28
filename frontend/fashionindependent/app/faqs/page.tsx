@@ -7,7 +7,7 @@ export default function FAQsPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-4xl font-bold mb-8">Frequently Asked Questions</h1>
-            <h1 className="text-2xl font-bold mb-8">Members FAQs</h1>
+            <h1 className="text-2xl font-bold mb-8">Members' FAQs</h1>
 
             <Accordion type="single" collapsible className="space-y-4">
               <AccordionItem value="item-1">
@@ -74,7 +74,7 @@ export default function FAQsPage() {
               </AccordionItem>
             </Accordion>
 
-            <h1 className="text-2xl font-bold mb-8 mt-6">Designers' FAQs</h1>
+            <h1 className="text-2xl font-bold mb-8 mt-6">Designers' FAQs</h1>               
             <Accordion type="single" collapsible className="space-y-4">
               <AccordionItem value="item-1">
                 <AccordionTrigger>What is The Fashion Independent?</AccordionTrigger>

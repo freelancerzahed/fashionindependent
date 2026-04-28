@@ -29,10 +29,12 @@ class DocumentController extends Controller
         $creator = Creator::where('user_id', $user->id)->first();
 
         if (!$creator) {
+            // Return empty documents list instead of 404
+            // This allows the page to load even if creator profile hasn't been fully set up
             return response()->json([
-                'status' => false,
-                'message' => 'Creator profile not found'
-            ], 404);
+                'status' => true,
+                'documents' => []
+            ]);
         }
 
         try {

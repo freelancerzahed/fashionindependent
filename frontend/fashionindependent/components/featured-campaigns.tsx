@@ -158,11 +158,8 @@ export function FeaturedCampaigns() {
       <div className="container mx-auto px-4">
         <div className=" mb-8">
           <h2 className="text-3xl font-bold">Active Campaigns</h2>
-          <h4 className="text-1xl font-bold mt-0">Explore New Arrivals</h4>
-
-          
-        </div>
-        
+          <h4 className="text-1xl font-bold mt-0">Explore New Arrivals</h4>          
+        </div>        
 
         {error ? (
           <div className="text-center py-12 bg-red-50 rounded-lg border border-red-200">

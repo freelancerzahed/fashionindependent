@@ -193,7 +193,7 @@ export default function DiscoverPage() {
         {/* Hero */}
         <section className="bg-gradient-to-br from-neutral-50 to-neutral-100 py-12">
           <div className="container mx-auto px-4">
-            <h1 className="text-4xl font-bold mb-6 text-center">Creatives in the spotlight</h1>
+            <h1 className="text-4xl font-bold mb-6 text-center">Creatives in the Spotlight</h1>
 
             <div className="max-w-2xl mx-auto relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />

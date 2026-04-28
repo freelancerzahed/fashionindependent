@@ -69,9 +69,13 @@ export function ShopPageClient({
   })
 
   const filterTabs = [
-    { id: "name", label: "Name (A-Z)" },
     { id: "total_sold", label: "Most Popular" },
+    { id: "color", label: "Color" },
+    { id: "sizes", label: "Sizes" },
     { id: "price", label: "Price" },
+    { id: "category_main", label: "Category" },
+    { id: "days_remaining", label: "Days Remaining" },
+    { id: "closed", label: "Closed" },
   ]
 
   const [activeFilter, setActiveFilter] = useState(initialSortBy)
@@ -217,6 +221,20 @@ export function ShopPageClient({
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1">
+        {/* Hero */}
+        <section className="py-24 bg-black">
+          <div className="container mx-auto px-4">
+            <h1 className="text-4xl text-white font-bold mb-6 text-center">Shop the Limited Drop</h1>
+
+            <div className="max-w-2xl text-white mx-auto relative text-center">
+              <p><span className="font-bold">What is a Limited Drop?</span> Each item featured in this store was voted up by our members and is 
+              available here for only 30–60 days. We offer all products at a significant discount during this limited release 
+              period. Once the product leaves our store, the discount ends with it.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section className="py-12 bg-neutral-50">
           <div className="container mx-auto px-4">
             {/* Search Bar */}
@@ -225,7 +243,7 @@ export function ShopPageClient({
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
                 <Input
                   type="search"
-                  placeholder="Search campaigns..."
+                  placeholder="Search drops..."
                   className="pl-12 h-12 text-lg"
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}

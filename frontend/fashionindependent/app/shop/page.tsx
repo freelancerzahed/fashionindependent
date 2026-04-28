@@ -158,6 +158,16 @@ function ShopPageSkeleton() {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1">
+        {/* Hero */}
+        <section className="bg-gradient-to-br from-neutral-50 to-neutral-100 py-12">
+          <div className="container mx-auto px-4">
+            <h1 className="text-4xl font-bold mb-6 text-center">Limited Drop</h1>
+
+            <div className="max-w-2xl mx-auto relative">
+              <p>What is the Limited Drop?</p>
+            </div>
+          </div>
+        </section>
         <section className="py-12 bg-neutral-50">
           <div className="container mx-auto px-4">
             {/* Search Bar Skeleton */}
