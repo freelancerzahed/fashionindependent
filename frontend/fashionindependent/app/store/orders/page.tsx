@@ -41,7 +41,7 @@ export default function StoreOrdersPage() {
                 const product = getStoreProductById(order.productId)
                 return (
                   <Card key={order.id} className="p-6">
-                    <div className="grid md:grid-cols-4 gap-4 items-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-center">
                       <div>
                         <p className="text-sm text-muted-foreground">Order ID</p>
                         <p className="font-semibold">{order.id}</p>

@@ -78,7 +78,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/signup" className="text-sm text-neutral-300 hover:text-white">
+                <Link href="/affiliate" className="text-sm text-neutral-300 hover:text-white">
                   Become an Affiliate
                 </Link>
               </li>

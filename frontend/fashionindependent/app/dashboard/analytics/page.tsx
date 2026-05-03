@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { AnalyticsDiagnostics } from "@/components/analytics-diagnostics"
-import { ArrowLeft, BarChart3, Users, TrendingUp, MessageCircle, AlertCircle, Loader2, Search, Filter, Download, RefreshCw } from "lucide-react"
+import { ArrowLeft, BarChart3, Users, TrendingUp, MessageCircle, AlertCircle, Loader2, Search, Filter, Download, RefreshCw, CheckCircle } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -248,10 +248,10 @@ export default function AnalyticsDashboardPage() {
   const tabs = [
     { id: "overview", label: "Overview" },
     { id: "customers", label: `Customers (${analytics.uniqueCustomers})` },
-    { id: "sizing", label: "Sizing Breakdown" },
     { id: "questions", label: "Campaign Questions" },
     { id: "demographics", label: "Demographics" },
     { id: "feedback", label: `Feedback (${analytics.feedbackComments})` },
+    { id: "premium-analytics", label: "Premium Analytics" },
   ]
 
   // Filter customers based on search
@@ -486,48 +486,6 @@ export default function AnalyticsDashboardPage() {
         </div>
       )}
 
-      {/* SIZING BREAKDOWN TAB */}
-      {activeTab === "sizing" && (
-        <div className="space-y-4">
-          {Object.keys(analytics.sizingBreakdown).length > 0 ? (
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Size Distribution Across All Campaigns</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                    {Object.entries(analytics.sizingBreakdown)
-                      .sort(([, a], [, b]) => Number(b) - Number(a))
-                      .map(([size, count]) => {
-                        const total = Object.values(analytics.sizingBreakdown).reduce((a, b) => a + b, 0)
-                        const percentage = ((count / total) * 100).toFixed(1)
-                        return (
-                          <div key={size} className="text-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
-                            <div className="text-sm font-semibold text-neutral-700 mb-2">{size}</div>
-                            <div className="text-3xl font-bold text-blue-600 mb-2">{count}</div>
-                            <div className="text-xs text-neutral-600">{percentage}% of total</div>
-                            <div className="w-full bg-neutral-200 rounded-full h-2 mt-3">
-                              <div
-                                className="bg-blue-500 h-2 rounded-full"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <Card className="p-12 text-center border-2 border-dashed border-neutral-300">
-              <p className="text-neutral-600">No sizing data available</p>
-            </Card>
-          )}
-        </div>
-      )}
-
       {/* CAMPAIGN QUESTIONS TAB */}
       {activeTab === "questions" && (
         <div className="space-y-4">
@@ -575,6 +533,43 @@ export default function AnalyticsDashboardPage() {
       {/* DEMOGRAPHICS TAB */}
       {activeTab === "demographics" && (
         <div className="space-y-6">
+          <div className="space-y-4">
+            {Object.keys(analytics.sizingBreakdown).length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Size Distribution Across All Campaigns</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    {Object.entries(analytics.sizingBreakdown)
+                      .sort(([, a], [, b]) => Number(b) - Number(a))
+                      .map(([size, count]) => {
+                        const total = Object.values(analytics.sizingBreakdown).reduce((a, b) => a + b, 0)
+                        const percentage = ((count / total) * 100).toFixed(1)
+                        return (
+                          <div key={size} className="text-center p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+                            <div className="text-sm font-semibold text-neutral-700 mb-2">{size}</div>
+                            <div className="text-3xl font-bold text-blue-600 mb-2">{count}</div>
+                            <div className="text-xs text-neutral-600">{percentage}% of total</div>
+                            <div className="w-full bg-neutral-200 rounded-full h-2 mt-3">
+                              <div
+                                className="bg-blue-500 h-2 rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="p-12 text-center border-2 border-dashed border-neutral-300">
+                <p className="text-neutral-600">No sizing data available</p>
+              </Card>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Age Groups */}
             {Object.keys(analytics?.demographics?.ageGroups ?? {}).length > 0 && (
@@ -742,6 +737,97 @@ export default function AnalyticsDashboardPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {activeTab === "premium-analytics" && (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-3xl font-bold mb-2">Premium Analytics</h2>
+            <p className="text-muted-foreground text-lg">Unlock more powerful stats for better planning</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+            <Card className="p-8 h-full">
+              <div className="space-y-6 h-full">
+                <div>
+                  <h3 className="text-xl font-semibold">Premium Analytics Features</h3>
+                  <p className="text-sm text-muted-foreground mt-2">Unlock more powerful stats for better planning</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                    <div>
+                      <p className="font-semibold">Traffic stats</p>
+                      <p className="text-sm text-muted-foreground">Traffic sources, mobile vs pc, time on page, and drop off points.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                    <div>
+                      <p className="font-semibold">User Feedback</p>
+                      <p className="text-sm text-muted-foreground">User feedback and feedback analysis.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                    <div>
+                      <p className="font-semibold">Sales data</p>
+                      <p className="text-sm text-muted-foreground">Abandoned carts, return customers, add to cart, checkout stats, and average order value.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                    <div>
+                      <p className="font-semibold">Customer Data</p>
+                      <p className="text-sm text-muted-foreground">Size preferences, favorites, and saved.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-8 h-full border border-slate-200">
+              <div className="space-y-6 h-full">
+                <div>
+                  <h3 className="text-xl font-semibold">Unclock Premium Features</h3>
+                  <p className="text-sm text-muted-foreground mt-2">Get access to advanced analytics designed to help you optimize growth.</p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Premium Analytics</p>
+                      <p className="text-3xl font-bold text-slate-950">$199</p>
+                    </div>
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">One-time</span>
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="font-semibold">Premium Analytics</p>
+                      <p className="text-sm text-muted-foreground mt-1">Includes the full premium analytics package for smarter planning.</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                      <p className="font-semibold">Fast setup</p>
+                      <p className="text-sm text-muted-foreground mt-1">Ready to use with your next campaign.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Link href="/checkout?productType=premium-analytics" className="block">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 font-semibold">
+                    Purchase Premium Analytics
+                  </Button>
+                </Link>
+
+                <p className="text-xs text-muted-foreground">
+                  Secure checkout and immediate access after payment.
+                </p>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 

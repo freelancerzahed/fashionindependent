@@ -37,7 +37,7 @@ export default function AccountSettingsPage() {
     },
   })
 
-  const [socialLinks, setSocialLinks] = useState<string[]>(["https://instagram.com/yourprofile"])
+  const [socialLinks, setSocialLinks] = useState<string[]>(["", "", "", ""])
   const [editingSettings, setEditingSettings] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
@@ -238,34 +238,37 @@ export default function AccountSettingsPage() {
                         </div>
                       </div>
 
-                      {/* Social Links */}
+                      {/* Web & Social Links */}
                       <div>
-                        <h3 className="text-lg font-semibold mb-4 text-blue-600">Social Links (Optional)</h3>
+                        <h3 className="text-lg font-semibold mb-4 text-blue-600">Web & Social Links</h3>
                         <div className="space-y-3">
                           {socialLinks.map((link, index) => (
-                            <div key={index} className="flex gap-2">
-                              <Input
-                                value={link}
-                                onChange={(e) => handleSocialLinkChange(index, e.target.value)}
-                                placeholder="https://instagram.com/yourprofile"
-                              />
-                              {socialLinks.length > 1 && (
-                                <Button
-                                  onClick={() => handleRemoveSocialLink(index)}
-                                  variant="outline"
-                                  className="text-red-600"
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              )}
+                            <div key={index}>
+                              <Label className="font-semibold mb-2 block">
+                                {index < 4 ? `Webpage URL ${index + 1}` : `Additional Webpage URL ${index - 3}`}
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={link}
+                                  onChange={(e) => handleSocialLinkChange(index, e.target.value)}
+                                  placeholder={`https://yourwebsite.com or https://instagram.com/yourprofile`}
+                                />
+                                {index >= 4 && (
+                                  <Button
+                                    onClick={() => handleRemoveSocialLink(index)}
+                                    variant="outline"
+                                    className="text-red-600"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           ))}
-                          {socialLinks.length < 5 && (
-                            <Button onClick={handleAddSocialLink} variant="outline" className="w-full">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add Social Link
-                            </Button>
-                          )}
+                          <Button onClick={handleAddSocialLink} variant="outline" className="w-full">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Webpage / URL
+                          </Button>
                         </div>
                       </div>
 

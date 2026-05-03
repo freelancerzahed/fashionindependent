@@ -24,8 +24,16 @@ export default function SettingsPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [socialLinks, setSocialLinks] = useState(["", "", "", "", ""])
-  const [originalData, setOriginalData] = useState<any>(null)
+  const [socialLinks, setSocialLinks] = useState(["", "", ""])
+  const [brandNames, setBrandNames] = useState([""])
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    current: "",
+    new: "",
+    confirm: ""
+  })
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({})
   const [settingsData, setSettingsData] = useState({
     fullName: user?.name || "",
     email: user?.email || "",
@@ -430,6 +438,54 @@ export default function SettingsPage() {
     }
   }
 
+  // Change password
+  const handleChangePassword = async () => {
+    const errors: Record<string, string> = {}
+    if (!passwordData.current) errors.current = "Current password is required"
+    if (!passwordData.new) errors.new = "New password is required"
+    else if (passwordData.new.length < 8) errors.new = "Password must be at least 8 characters"
+    if (!passwordData.confirm) errors.confirm = "Please confirm new password"
+    else if (passwordData.new !== passwordData.confirm) errors.confirm = "Passwords do not match"
+    setPasswordErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
+    setChangingPassword(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      const token = localStorage.getItem("auth_token")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: passwordData.current,
+          password: passwordData.new,
+          password_confirmation: passwordData.confirm,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setSuccess("Password changed successfully!")
+        setShowChangePassword(false)
+        setPasswordData({ current: "", new: "", confirm: "" })
+        setPasswordErrors({})
+        setTimeout(() => setSuccess(""), 4000)
+      } else {
+        const data = await response.json()
+        setError(data.message || "Failed to change password")
+      }
+    } catch (err) {
+      setError("Failed to change password. Please try again.")
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   // Manual refresh
   const handleManualRefresh = async () => {
     if (!hasUnsavedChanges) {
@@ -744,36 +800,154 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Social Links */}
+            {/* Branding */}
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-blue-600">Social Links (Optional)</h3>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Branding</h3>
               <div className="space-y-3">
-                {socialLinks.map((link, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input value={link} onChange={(e) => {
-                        const newLinks = [...socialLinks]
-                        newLinks[index] = e.target.value
-                        setSocialLinks(newLinks)
-                      }} placeholder="https://instagram.com/yourprofile" />
-                    {socialLinks.filter((l) => l).length > 1 && (
-                      <Button
-                        onClick={() => {
-                          setSocialLinks(socialLinks.filter((_, i) => i !== index))
+                {brandNames.map((name, index) => (
+                  <div key={index}>
+                    <Label className="font-semibold mb-2 block">
+                      {index === 0 ? 'Primary Brand Name' : `Additional Brand Name ${index}`}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={name}
+                        onChange={(e) => {
+                          const newNames = [...brandNames]
+                          newNames[index] = e.target.value
+                          setBrandNames(newNames)
                         }}
-                        variant="outline"
-                        className="text-red-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
+                        placeholder={index === 0 ? 'Primary brand name' : 'Additional brand name'}
+                      />
+                      {index > 0 && (
+                        <Button
+                          onClick={() => {
+                            setBrandNames(brandNames.filter((_, i) => i !== index))
+                          }}
+                          variant="outline"
+                          className="text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
-                {socialLinks.length < 5 && (
-                  <Button onClick={() => setSocialLinks([...socialLinks, ""])} variant="outline" className="w-full">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Social Link
+                <Button onClick={() => setBrandNames([...brandNames, ""])} variant="outline" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Brand Name
+                </Button>
+              </div>
+            </div>
+
+            {/* General Settings */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">General Settings</h3>
+              <div className="space-y-4">
+                {/* Change Password */}
+                <div>
+                  <Button onClick={() => setShowChangePassword(!showChangePassword)} variant="outline" className="w-full justify-start">
+                    Change Password
                   </Button>
-                )}
+                  {showChangePassword && (
+                    <div className="mt-4 p-4 border rounded-lg space-y-3">
+                      <div>
+                        <Label className="font-semibold mb-2 block">Current Password</Label>
+                        <Input
+                          type="password"
+                          value={passwordData.current}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, current: e.target.value }))}
+                        />
+                        {passwordErrors.current && <p className="text-xs text-red-600 mt-1">{passwordErrors.current}</p>}
+                      </div>
+                      <div>
+                        <Label className="font-semibold mb-2 block">New Password</Label>
+                        <Input
+                          type="password"
+                          value={passwordData.new}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, new: e.target.value }))}
+                        />
+                        {passwordErrors.new && <p className="text-xs text-red-600 mt-1">{passwordErrors.new}</p>}
+                      </div>
+                      <div>
+                        <Label className="font-semibold mb-2 block">Confirm New Password</Label>
+                        <Input
+                          type="password"
+                          value={passwordData.confirm}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))}
+                        />
+                        {passwordErrors.confirm && <p className="text-xs text-red-600 mt-1">{passwordErrors.confirm}</p>}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleChangePassword} disabled={changingPassword}>
+                          {changingPassword ? (
+                            <>
+                              <Loader className="w-4 h-4 mr-2 animate-spin" />
+                              Changing...
+                            </>
+                          ) : (
+                            "Change Password"
+                          )}
+                        </Button>
+                        <Button onClick={() => { setShowChangePassword(false); setPasswordData({current:'',new:'',confirm:''}); setPasswordErrors({}) }} variant="outline">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Privacy Setting */}
+                <div>
+                  <Button variant="outline" className="w-full justify-start" disabled>
+                    Privacy Setting <span className="ml-auto text-neutral-500">Coming Soon</span>
+                  </Button>
+                </div>
+                {/* Deactivate Account */}
+                <div>
+                  <Button variant="outline" className="w-full justify-start text-red-600" disabled>
+                    Deactivate Account <span className="ml-auto text-neutral-500">Coming Soon</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Web & Social Links */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Web & Social Links (Optional)</h3>
+              <div className="space-y-3">
+                {socialLinks.map((link, index) => (
+                  <div key={index}>
+                    <Label className="font-semibold mb-2 block">
+                      {index < 3 ? `Webpage URL ${index + 1}` : `Additional Webpage URL ${index - 2}`}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={link}
+                        onChange={(e) => {
+                          const newLinks = [...socialLinks]
+                          newLinks[index] = e.target.value
+                          setSocialLinks(newLinks)
+                        }}
+                        placeholder={`https://yourwebsite.com or https://instagram.com/yourprofile`}
+                      />
+                      {index >= 3 && (
+                        <Button
+                          onClick={() => {
+                            setSocialLinks(socialLinks.filter((_, i) => i !== index))
+                          }}
+                          variant="outline"
+                          className="text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <Button onClick={() => setSocialLinks([...socialLinks, ""])} variant="outline" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Webpage / URL
+                </Button>
               </div>
             </div>
 
@@ -865,7 +1039,26 @@ export default function SettingsPage() {
           </Card>
 
           <Card className="p-6">
-            <h3 className="font-semibold mb-4">Social Links</h3>
+            <h3 className="font-semibold mb-4">Branding</h3>
+            <div className="space-y-2 text-sm">
+              {brandNames.filter((name) => name).length > 0 ? (
+                brandNames.map((name, index) =>
+                  name ? (
+                    <div key={index}>
+                      <p className="text-neutral-600">{index === 0 ? 'Primary Brand Name' : `Brand Name ${index + 1}`}</p>
+                      <p className="font-semibold">{name}</p>
+                    </div>
+                  ) : null
+                )
+              ) : (
+                <p className="text-neutral-600">No brand names added</p>
+              )}
+            </div>
+          </Card>
+            
+          {/*Web & Social Links */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Web & Social Links</h3>
             <div className="space-y-2 text-sm">
               {socialLinks.filter((l) => l).length > 0 ? (
                 socialLinks.map((link, index) =>

@@ -38,6 +38,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "embla-carousel-react": "latest",
+    "framer-motion": "^12.38.0",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
     "next": "^16.1.1",

@@ -9,11 +9,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useAuth } from "@/lib/auth-context"
+import { AlertCircle, Eye, EyeOff, CheckCircle, Smile } from "lucide-react"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     name: "",
+    gender: "",
+    ageRange: "",
     email: "",
     password: "",
     role: "backer" as "backer" | "creator",
@@ -62,6 +72,9 @@ export default function SignupPage() {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-md mx-auto bg-white rounded-lg p-8">
+              <div className="w-12 h-12 mx-auto mb-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                <Smile className="w-6 h-6 text-white" />
+              </div>
               {/* Header with sign in link */}
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold mb-4">Become a Member</h1>
@@ -71,7 +84,7 @@ export default function SignupPage() {
                     sign in here
                   </Link>
                 </p>
-                <p className="text-neutral-600 mt-2">Join The Fashion Independent community</p>
+                <p className="text-neutral-600 mt-2">Join The Fashion Independent</p>
               </div>
 
               {error && (
@@ -110,8 +123,6 @@ export default function SignupPage() {
 
                 {/* Form fields */}
                 <div>
-                  <h2 className="text-lg font-semibold text-neutral-900 mb-4">Tell us about yourself</h2>
-
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-sm font-medium text-neutral-800">
@@ -126,6 +137,41 @@ export default function SignupPage() {
                         required
                         className="border border-neutral-200 bg-neutral-50 focus:bg-white"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="gender" className="text-sm font-medium text-neutral-800">
+                        Select your gender
+                      </Label>
+                      <Select value={formData.gender} onValueChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}>
+                        <SelectTrigger className="w-full border border-neutral-200 bg-neutral-50">
+                          <SelectValue placeholder="Choose gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="non-binary">Non-binary</SelectItem>
+                          <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="ageRange" className="text-sm font-medium text-neutral-800">
+                        Select your age
+                      </Label>
+                      <Select value={formData.ageRange} onValueChange={(value) => setFormData((prev) => ({ ...prev, ageRange: value }))}>
+                        <SelectTrigger className="w-full border border-neutral-200 bg-neutral-50">
+                          <SelectValue placeholder="Choose age range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="18-24">18–24</SelectItem>
+                          <SelectItem value="25-34">25–34</SelectItem>
+                          <SelectItem value="35-44">35–44</SelectItem>
+                          <SelectItem value="45-64">45–64</SelectItem>
+                          <SelectItem value="65plus">65+</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">

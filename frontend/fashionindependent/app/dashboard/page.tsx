@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { DashboardRecentCampaigns } from "@/components/dashboard-recent-campaigns"
-import { ArrowRight, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowRight, AlertCircle, Loader2, ArrowLeft } from "lucide-react"
 import { BACKEND_URL } from "@/config"
 
 export const dynamic = "force-dynamic"
@@ -202,6 +202,20 @@ export default function DashboardPage() {
               totalBackers={creatorStats.totalBackers}
             />
 
+            <div className="mt-3">
+              <Link
+                href="/dashboard/analytics"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-100 hover:text-blue-700"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                View all analytics
+              </Link>
+            </div>
+
+            <DashboardRecentCampaigns campaigns={campaigns} />
+
+            
+
             {/* Additional Creator Stats - 6 Grid (2 rows × 3 columns) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
@@ -253,7 +267,7 @@ export default function DashboardPage() {
               </Card>
             </div>
 
-            <DashboardRecentCampaigns campaigns={campaigns} />
+            
           </>
         )}
 
@@ -270,12 +284,6 @@ export default function DashboardPage() {
                 <Button className="w-full" variant="outline">
                   <ArrowRight className="h-4 w-4 mr-2" />
                   View Profile
-                </Button>
-              </Link>
-              <Link href="/dashboard/analytics">
-                <Button className="w-full" variant="outline">
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  View Analytics
                 </Button>
               </Link>
             </div>

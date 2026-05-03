@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
-import { AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, CheckCircle, Handshake } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -46,11 +46,11 @@ export default function LoginPage() {
             <div className="mb-8">
               <div className="flex items-center justify-center mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">F</span>
+                  <Handshake className="w-6 h-6 text-white" />
                 </div>
               </div>
               <h1 className="text-3xl font-bold text-center text-slate-900 mb-2">Welcome Back</h1>
-              <p className="text-center text-slate-600 text-sm">Sign in to your FashionIndependent account</p>
+              <p className="text-center text-slate-600 text-sm">Sign in to your account</p>
             </div>
 
             {/* Error Alert */}
@@ -67,7 +67,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-slate-200"></div>
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="px-3 bg-white text-slate-500 font-medium">Or sign in with email</span>
+                <span className="px-3 bg-white text-slate-500 font-medium">Sign in with email</span>
               </div>
             </div>
 
@@ -196,7 +196,7 @@ export default function LoginPage() {
               <p className="text-sm text-slate-600">
                 Don't have an account?{" "}
                 <Link href="/signup" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-                  Create one now
+                  Sign  Now
                 </Link>
               </p>
             </div>

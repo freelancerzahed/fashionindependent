@@ -250,16 +250,17 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
     })
   }
 
-  const handleQuestionnaireMultiSelect = (field: string, value: string) => {
+  const handleQuestionnaireMultiSelect = (
+    field: "previousSalesChannels" | "manufacturingAssistance",
+    value: string
+  ) => {
     setFormData((prev) => ({
       ...prev,
       questionnaire: {
         ...prev.questionnaire,
-        [field]: prev.questionnaire[field as keyof typeof prev.questionnaire].includes(value)
-          ? (prev.questionnaire[field as keyof typeof prev.questionnaire] as string[]).filter(
-              (item) => item !== value
-            )
-          : [...(prev.questionnaire[field as keyof typeof prev.questionnaire] as string[]), value],
+        [field]: prev.questionnaire[field].includes(value)
+          ? prev.questionnaire[field].filter((item) => item !== value)
+          : [...prev.questionnaire[field], value],
       },
     }))
   }
@@ -279,6 +280,10 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
 
     if (!formData.productName.trim()) {
       newErrors.productName = "Product name is required"
+    } else if (formData.productName.trim().length < 4) {
+      newErrors.productName = "Product name must be at least 4 characters"
+    } else if (formData.productName.trim().length > 30) {
+      newErrors.productName = "Product name cannot exceed 30 characters"
     }
 
     if (!formData.productDescription.trim()) {
@@ -409,6 +414,8 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
             value={formData.productName}
             onChange={(e) => handleTextInputChange("productName", e.target.value)}
             className={errors.productName ? "border-red-500" : ""}
+            minLength={4}
+            maxLength={30}
           />
           {errors.productName && <p className="text-sm text-red-600">{errors.productName}</p>}
         </div>

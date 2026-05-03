@@ -36,7 +36,7 @@ export default function CheckoutPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="firstName">First Name</Label>
                     <Input id="firstName" placeholder="John" />
@@ -54,7 +54,7 @@ export default function CheckoutPage() {
                   <Label htmlFor="address">Address</Label>
                   <Input id="address" placeholder="123 Main Street" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">City</Label>
                     <Input id="city" placeholder="New York" />
@@ -93,7 +93,7 @@ export default function CheckoutPage() {
                       <Label htmlFor="cardNumber">Card Number</Label>
                       <Input id="cardNumber" placeholder="1234 5678 9012 3456" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="expiry">Expiry Date</Label>
                         <Input id="expiry" placeholder="MM/YY" />
