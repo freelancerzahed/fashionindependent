@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {

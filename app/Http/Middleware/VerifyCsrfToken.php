@@ -41,6 +41,8 @@ class VerifyCsrfToken extends Middleware
         'api/v2/campaign*',
         '/api/v2/creator*',
         'api/v2/creator*',
+        '/api/v2/register*',  // Creator registration endpoint
+        'api/v2/register*',   // Creator registration endpoint
         '/api/v2/auth/*',  // Exclude auth API routes from CSRF - uses Bearer token auth instead
         'api/v2/auth/*',
     ];

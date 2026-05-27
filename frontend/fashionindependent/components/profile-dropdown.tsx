@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { User, Settings, LogOut } from "lucide-react"
+import { User, Settings, LogOut, Eye } from "lucide-react"
 
 export function ProfileDropdown() {
   const router = useRouter()
@@ -24,8 +24,12 @@ export function ProfileDropdown() {
     router.push("/")
   }
 
-  const handleProfile = () => {
+  const handleDashboard = () => {
     router.push("/dashboard")
+  }
+
+  const handleProfile = () => {
+    router.push("/dashboard/profile")
   }
 
   const handleSettings = () => {
@@ -63,6 +67,10 @@ export function ProfileDropdown() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
+          <Eye className="mr-2 size-4" />
+          <span>Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleDashboard} className="cursor-pointer">
           <User className="mr-2 size-4" />
           <span>Dashboard</span>
         </DropdownMenuItem>

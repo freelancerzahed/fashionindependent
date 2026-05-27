@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import type { User } from "./data"
-import { BACKEND_URL } from "@/config"
+import { BACKEND_URL, AUTH_CONFIG } from "@/config"
 
 interface AuthContextType {
   user: User | null
@@ -22,20 +22,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    setMounted(true)
+  // Function to load auth from localStorage
+  const loadAuthFromStorage = useCallback(() => {
     try {
       const storedUser = localStorage.getItem("user")
       const storedToken = localStorage.getItem("auth_token")
+      
+      console.log("[Auth] Loading from localStorage...", {
+        hasUser: !!storedUser,
+        hasToken: !!storedToken,
+      })
+
       if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser))
+        const parsedUser = JSON.parse(storedUser)
+        console.log("[Auth] ✓ Successfully loaded user:", parsedUser)
+        setUser(parsedUser)
         setToken(storedToken)
+        return true
+      } else {
+        console.log("[Auth] ✗ Missing user or token in localStorage")
+        setUser(null)
+        setToken(null)
+        return false
       }
     } catch (error) {
       console.error("[Auth] Failed to load user from localStorage:", error)
+      setUser(null)
+      setToken(null)
+      return false
     }
-    setIsLoading(false)
   }, [])
+
+  useEffect(() => {
+    console.log("[Auth] AuthProvider mounted, initializing...")
+    setMounted(true)
+    
+    // Load auth from storage immediately
+    loadAuthFromStorage()
+    
+    // Set isLoading to false after a minimal delay
+    // This ensures the component mounts before we start redirects
+    const timer = setTimeout(() => {
+      console.log("[Auth] Initialization complete, isLoading = false")
+      setIsLoading(false)
+    }, 0)
+    
+    // Listen for storage changes (from other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "auth_token" || e.key === "user") {
+        console.log("[Auth] Storage changed (other tab):", e.key, "Reloading...")
+        loadAuthFromStorage()
+      }
+    }
+
+    // Also poll localStorage periodically to catch same-tab changes
+    // This is needed because storage events don't fire in the same tab
+    const pollTimer = setInterval(() => {
+      const currentUser = localStorage.getItem("user")
+      const currentToken = localStorage.getItem("auth_token")
+      
+      // If localStorage has data but our state doesn't, reload
+      if ((currentUser || currentToken) && (!token || !user)) {
+        console.log("[Auth] Detected localStorage update (same tab), loading...")
+        loadAuthFromStorage()
+      }
+    }, 100)
+
+    window.addEventListener("storage", handleStorageChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      clearTimeout(timer)
+      clearInterval(pollTimer)
+    }
+  }, [loadAuthFromStorage])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
@@ -46,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let lastError = null
       
       for (const userType of userTypes) {
-        const url = "/api/auth/login"
+        const url = `${BACKEND_URL}${AUTH_CONFIG.loginEndpoint}`
         console.log(`[Auth] Attempting login as ${userType}:`, { email, url })
         
         response = await fetch(url, {
@@ -82,6 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: data.user?.email || data.data?.email || email,
             name: data.user?.name || data.data?.name || email.split("@")[0],
             role: (data.user?.role || data.data?.role || userType) as "backer" | "creator",
+            roles: data.roles || data.user?.roles || data.data?.roles || [userType],
+            avatar: data.user?.avatar || data.data?.avatar,
             createdAt: new Date(),
           }
 
@@ -113,11 +175,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Use different endpoints based on role
       const isCreator = role === "creator"
-      const endpoint = isCreator ? `${BACKEND_URL}/creator/register` : `${BACKEND_URL}/auth/signup`
+      const endpoint = isCreator ? AUTH_CONFIG.creatorSignupEndpoint : AUTH_CONFIG.signupEndpoint
+      const url = `${BACKEND_URL}${endpoint}`
       
-      console.log("[Auth] Signing up with:", { email, name, role, url: endpoint })
+      console.log("[Auth] Signing up with:", { email, name, role, url })
       
-      const response = await fetch(endpoint, {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -158,6 +221,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: data.user?.email || data.data?.email || email,
         name: data.user?.name || data.data?.name || name,
         role: (data.user?.role || data.data?.role || role) as "backer" | "creator",
+        roles: data.roles || data.user?.roles || data.data?.roles || [role],
+        avatar: data.user?.avatar || data.data?.avatar,
         createdAt: new Date(),
       }
 

@@ -48,8 +48,37 @@ export default function SignupPage() {
   }
 
   const handleSubmit = async () => {
-    if (!formData.age || !formData.terms) {
-      setError("Please agree to terms and confirm age")
+    // Validate all required fields
+    if (!formData.name.trim()) {
+      setError("Name is required")
+      return
+    }
+    if (!formData.gender) {
+      setError("Please select your gender")
+      return
+    }
+    if (!formData.ageRange) {
+      setError("Please select your age range")
+      return
+    }
+    if (!formData.email.trim()) {
+      setError("Email is required")
+      return
+    }
+    if (!formData.password) {
+      setError("Password is required")
+      return
+    }
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
+    if (!formData.age) {
+      setError("Please confirm you are 18 years or older")
+      return
+    }
+    if (!formData.terms) {
+      setError("Please agree to the terms and conditions")
       return
     }
 
@@ -60,7 +89,7 @@ export default function SignupPage() {
       await signup(formData.email, formData.password, formData.name, formData.role)
       router.push("/dashboard")
     } catch (err) {
-      setError("Failed to create account")
+      setError(err instanceof Error ? err.message : "Failed to create account")
     } finally {
       setIsLoading(false)
     }

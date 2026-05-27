@@ -85,12 +85,15 @@ class CreatorController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'user_type' => $user->user_type,
+                    'role' => 'creator',
+                    'roles' => ['creator', 'backer'], // New creators also have backer role
                 ],
                 'creator' => [
                     'id' => $creator->id,
                     'status' => $creator->status,
                     'brand_name' => $creator->brand_name,
                 ],
+                'roles' => ['creator', 'backer'], // Include roles in response
                 'token' => $token
             ], 201);
         } catch (\Exception $e) {

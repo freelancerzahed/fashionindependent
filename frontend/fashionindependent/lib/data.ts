@@ -42,6 +42,7 @@ export interface User {
   email: string
   name: string
   role: "backer" | "creator" | "admin"
+  roles?: string[]
   avatar?: string
   phone?: string
   address?: string

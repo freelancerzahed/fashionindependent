@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useUserContext } from "@/contexts/UserContext"
 import CreatePost from "@/components/create-post"
 import SocialFeed from "@/components/social-feed"
 import FriendSuggestions from "@/components/friend-suggestions"
@@ -93,10 +94,25 @@ const initialPosts: Post[] = [
 ]
 
 export default function DashboardPage() {
+  const { user } = useUserContext()
   const [feedPosts, setFeedPosts] = useState<Post[]>(initialPosts)
   const [profileImage, setProfileImage] = useState<string | null>(null)
-  const [userName, setUserName] = useState("Jane Doe")
-  const [userEmail, setUserEmail] = useState("jane.doe@email.com")
+  
+  // Use user data from context, fall back to defaults
+  const [userName, setUserName] = useState<string>("")
+  const [userEmail, setUserEmail] = useState<string>("")
+
+  // Update user info when context data changes
+  useEffect(() => {
+    if (user) {
+      setUserName(user.name || "User")
+      setUserEmail(user.email || "user@example.com")
+    } else {
+      setUserName("Jane Doe")
+      setUserEmail("jane.doe@email.com")
+    }
+  }, [user])
+
   const featuredProducts = products.slice(0, 6)
 
   const handleAddPost = (newPost: Post) => {

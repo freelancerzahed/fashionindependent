@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import Image from "next/image"
 import type { Campaign } from "@/lib/data"
 import { useState, useEffect } from "react"
+import { BACKEND_URL } from "@/config"
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -17,6 +18,8 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
   const [backersCount, setBackersCount] = useState<string>("--");
   const [upvoteCount, setUpvoteCount] = useState<string>("--");
   const [upvoteGoalFormatted, setUpvoteGoalFormatted] = useState<string>("--");
+  const [questionStats, setQuestionStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
   
   useEffect(() => {
     // Calculate upvote percentage on client side only to prevent hydration mismatch
@@ -38,7 +41,27 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
     // Set upvote count on client side to prevent hydration mismatch
     setUpvoteCount((campaign.upvoteCount || 0).toLocaleString());
     setUpvoteGoalFormatted((campaign.upvoteGoal || 0).toLocaleString());
-  }, [campaign.upvoteCount, campaign.upvoteGoal, campaign.daysRemaining, campaign.backers])
+
+    // Fetch question statistics
+    const fetchQuestionStats = async () => {
+      try {
+        setLoadingStats(true);
+        const response = await fetch(`${BACKEND_URL}/campaign/${campaign.id}/question-statistics`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status && data.data) {
+            setQuestionStats(data.data);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching question statistics:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchQuestionStats();
+  }, [campaign.upvoteCount, campaign.upvoteGoal, campaign.daysRemaining, campaign.backers, campaign.id])
 
   return (
     <Card className="overflow-hidden group">
@@ -79,6 +102,26 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
           {upvoteCount}{" "}
           <span className="text-neutral-600 font-normal">/ {upvoteGoalFormatted} upvotes</span>
         </p>
+
+        {/* Question Statistics Section */}
+        {questionStats && questionStats.total_responses > 0 && (
+          <div className="mt-4 pt-3 border-t border-neutral-200">
+            <p className="text-xs text-neutral-600 mb-2">
+              💬 {questionStats.total_responses} member{questionStats.total_responses !== 1 ? 's' : ''} answered questions
+            </p>
+            {questionStats.questions && questionStats.questions.slice(0, 2).map((q: any) => (
+              <div key={q.id} className="text-xs mb-2">
+                <p className="font-medium text-neutral-700 truncate">{q.question_text}</p>
+                <p className="text-neutral-500">
+                  Top: <span className="font-semibold">{q.most_popular_answer}</span> ({q.most_popular_count} votes)
+                </p>
+              </div>
+            ))}
+            {questionStats.questions && questionStats.questions.length > 2 && (
+              <p className="text-xs text-neutral-500 italic">+{questionStats.questions.length - 2} more questions</p>
+            )}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Link

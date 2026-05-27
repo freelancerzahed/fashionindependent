@@ -176,6 +176,18 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
     if (!files) return
 
     Array.from(files).forEach((file) => {
+      // Check max 10 limit for additional images
+      if (type === "additional") {
+        const currentAdditionalCount = formData.productImages.filter((img) => img.type === "additional").length
+        if (currentAdditionalCount >= 10) {
+          setErrors((prev) => ({
+            ...prev,
+            imageUpload: "Maximum 10 additional images allowed",
+          }))
+          return
+        }
+      }
+
       if (!file.type.startsWith("image/")) {
         setErrors((prev) => ({
           ...prev,
@@ -292,6 +304,17 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
 
     if (formData.productDescription.length < 20) {
       newErrors.productDescription = "Description must be at least 20 characters"
+    }
+
+    // Validate images
+    const frontImage = formData.productImages.find((img) => img.type === "front")
+    const backImage = formData.productImages.find((img) => img.type === "back")
+    
+    if (!frontImage) {
+      newErrors.frontImage = "Front image is required"
+    }
+    if (!backImage) {
+      newErrors.backImage = "Back image is required"
     }
 
     // Validate materials
@@ -450,7 +473,7 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
                 placeholder="e.g., Cotton, Polyester"
                 value={material.name}
                 onChange={(e) => handleMaterialChange(index, "name", e.target.value)}
-                className={errors[`materialName-${index}`] ? "border-red-500" : ""}
+                className={errors[`materialName-${index}`] || (errors.materials && !material.name.trim()) ? "border-red-500" : ""}
               />
               {errors[`materialName-${index}`] && (
                 <p className="text-sm text-red-600">{errors[`materialName-${index}`]}</p>
@@ -489,7 +512,7 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
             )}
           </div>
         ))}
-        {errors.materials && <p className="text-sm text-red-600">{errors.materials}</p>}
+        {errors.materials && <p className="text-sm text-red-600 font-semibold">{errors.materials}</p>}
         <Button type="button" variant="outline" size="sm" onClick={() => handleAddMaterial()}>
           Add Material
         </Button>
@@ -507,6 +530,7 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
                 placeholder="e.g., Black, Navy Blue, Red"
                 value={color}
                 onChange={(e) => handleArrayInputChange("colors", index, e.target.value)}
+                className={errors.colors ? "border-red-500" : ""}
               />
             </div>
             {formData.colors.length > 1 && (
@@ -599,7 +623,9 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
         <div className="space-y-2">
           <Label>Front Image *</Label>
           {!frontImage ? (
-            <label className="border-2 border-dashed rounded-lg p-8 cursor-pointer hover:bg-muted/50 transition flex flex-col items-center justify-center gap-2">
+            <label className={`border-2 border-dashed rounded-lg p-8 cursor-pointer hover:bg-muted/50 transition flex flex-col items-center justify-center gap-2 ${
+              errors.frontImage ? "border-red-500 bg-red-50" : ""
+            }`}>
               <Upload className="w-6 h-6 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Click to upload front image</span>
               <input
@@ -621,13 +647,16 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
               </button>
             </div>
           )}
+          {errors.frontImage && <p className="text-sm text-red-600">{errors.frontImage}</p>}
         </div>
 
         {/* Back Image */}
         <div className="space-y-2">
           <Label>Back Image *</Label>
           {!backImage ? (
-            <label className="border-2 border-dashed rounded-lg p-8 cursor-pointer hover:bg-muted/50 transition flex flex-col items-center justify-center gap-2">
+            <label className={`border-2 border-dashed rounded-lg p-8 cursor-pointer hover:bg-muted/50 transition flex flex-col items-center justify-center gap-2 ${
+              errors.backImage ? "border-red-500 bg-red-50" : ""
+            }`}>
               <Upload className="w-6 h-6 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Click to upload back image</span>
               <input
@@ -649,11 +678,12 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
               </button>
             </div>
           )}
+          {errors.backImage && <p className="text-sm text-red-600">{errors.backImage}</p>}
         </div>
 
         {/* Additional Images */}
         <div className="space-y-2">
-          <Label>Additional Images (Optional)</Label>
+          <Label>Additional Images (Optional, max 10) - {additionalImages.length}/10</Label>
           <div className="grid grid-cols-2 gap-4">
             {additionalImages.map((image) => (
               <div key={image.id} className="relative h-40 rounded-lg overflow-hidden bg-muted">
@@ -667,18 +697,23 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
                 </button>
               </div>
             ))}
-            <label className="border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition flex flex-col items-center justify-center gap-2">
-              <Upload className="w-5 h-5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Add more</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => handleImageUpload(e, "additional")}
-                hidden
-              />
-            </label>
+            {additionalImages.length < 10 && (
+              <label className="border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition flex flex-col items-center justify-center gap-2">
+                <Upload className="w-5 h-5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Add more</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleImageUpload(e, "additional")}
+                  hidden
+                />
+              </label>
+            )}
           </div>
+          {additionalImages.length >= 10 && (
+            <p className="text-sm text-amber-600">Maximum 10 additional images reached</p>
+          )}
         </div>
 
         {errors.productImages && <p className="text-sm text-red-600">{errors.productImages}</p>}

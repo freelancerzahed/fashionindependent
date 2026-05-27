@@ -46,6 +46,8 @@ export default function CampaignsPage() {
     colors: false,
     techPack: false,
   })
+  const [surveyResponses, setSurveyResponses] = useState<any>(null)
+  const [surveyLoading, setSurveyLoading] = useState(false)
   const router = useRouter()
 
   // Helper function to get authorization token
@@ -148,6 +150,31 @@ export default function CampaignsPage() {
     }
   }, [])
 
+  // Fetch survey responses for active campaign
+  const fetchSurveyResponses = useCallback(async (campaignId: string) => {
+    try {
+      setSurveyLoading(true)
+      const response = await fetch(`${BACKEND_URL}/campaign/${campaignId}/question-statistics`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.status && data.data) {
+          setSurveyResponses(data.data)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch survey responses:", err)
+    } finally {
+      setSurveyLoading(false)
+    }
+  }, [])
+
   // Initial fetch on mount
   useEffect(() => {
     fetchCampaigns(true)
@@ -171,6 +198,14 @@ export default function CampaignsPage() {
       clearInterval(refreshTimer)
     }
   }, [fetchCampaigns, editingCampaignId])
+
+  // Fetch survey responses when active campaign changes
+  useEffect(() => {
+    const activeCampaign = campaigns.find((c) => c.status === "live")
+    if (activeCampaign && activeCampaign.id) {
+      fetchSurveyResponses(activeCampaign.id)
+    }
+  }, [campaigns, fetchSurveyResponses])
 
   // Helper function to calculate campaign health
   const calculateCampaignHealth = (funded: number, goal: number, daysLeft: number, backers: number) => {
@@ -496,7 +531,7 @@ export default function CampaignsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8 px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Error Alert */}
       {error && (
         <Card className="p-4 border border-red-200 bg-red-50">
@@ -864,39 +899,39 @@ export default function CampaignsPage() {
       {/* Active Campaign Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold">Active Campaign</h2>
+          <h2 className="text-2xl md:text-3xl font-bold">Active Campaign</h2>
         </div>
         {activeCampaignData ? (
-          <Card className="p-8">
-            <div className="space-y-8">
-              {/* Health Score Badge and Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-700 font-semibold mb-1">Funding Goal</p>
-                  <p className="text-2xl font-bold text-blue-900 mb-2">${activeCampaignData.funding_goal?.toLocaleString() || "0"}</p>
-                  <p className="text-xs text-blue-600">Campaign target</p>
+          <Card className="p-4 md:p-6 lg:p-8 overflow-hidden">
+            <div className="space-y-4 md:space-y-6 w-full">
+              {/* Top Stats Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                <div className="p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs md:text-sm text-blue-600 font-semibold mb-1 md:mb-2">Funding Goal</p>
+                  <p className="text-2xl md:text-3xl font-bold text-blue-900">${activeCampaignData.funding_goal?.toLocaleString() || "0"}</p>
+                  <p className="text-xs text-blue-600 mt-1">Campaign target</p>
                 </div>
 
-                <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1 md:mb-2">
                     <Clock className="w-4 h-4 text-orange-600" />
-                    <p className="text-sm text-orange-700 font-semibold">Time Limit</p>
+                    <p className="text-xs md:text-sm text-orange-600 font-semibold">Time Limit</p>
                   </div>
-                  <p className="text-3xl font-bold text-orange-600">{activeCampaignData.days_active || 90}</p>
+                  <p className="text-2xl md:text-3xl font-bold text-orange-600">{activeCampaignData.days_active || 90}</p>
                   <p className="text-xs text-orange-600">days active</p>
                 </div>
 
-                <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-700 font-semibold mb-1">Status</p>
-                  <p className="text-2xl font-bold text-green-900 mb-2 capitalize">{activeCampaignData.status}</p>
-                  <p className="text-xs text-green-600">{new Date(activeCampaignData.created_at).toLocaleDateString()}</p>
+                <div className="p-3 md:p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-xs md:text-sm text-green-600 font-semibold mb-1 md:mb-2">Status</p>
+                  <p className="text-xl md:text-2xl font-bold text-green-900 capitalize">{activeCampaignData.status}</p>
+                  <p className="text-xs text-green-600 mt-1">{new Date(activeCampaignData.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
 
               {/* Main Campaign Gallery & Details */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Campaign Images Section */}
-              <div className="lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+                {/* Campaign Images Section */}
+                <div className="md:col-span-1 lg:col-span-2">
                 {activeCampaignData.product_images && Array.isArray(activeCampaignData.product_images) && activeCampaignData.product_images.length > 0 ? (
                   <div className="space-y-4">
                     {/* Main Image Display */}
@@ -986,16 +1021,16 @@ export default function CampaignsPage() {
               </div>
 
               {/* Campaign Details Section */}
-              <div className="lg:col-span-1">
-                <div className="space-y-6">
+              <div className="md:col-span-1 lg:col-span-1 overflow-hidden">
+                <div className="space-y-4 md:space-y-6 w-full">
                   {/* Status Badge */}
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                    <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
                       activeCampaignData.status === 'live'
                         ? 'bg-green-100 text-green-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}>
-                      <span className={`w-2 h-2 rounded-full mr-2 animate-pulse ${
+                      <span className={`w-2 h-2 rounded-full mr-1.5 md:mr-2 flex-shrink-0 ${
                         activeCampaignData.status === 'live' ? 'bg-green-600' : 'bg-blue-600'
                       }`}></span>
                       {activeCampaignData.status === 'live' ? '🔴 LIVE' : '📋 DRAFT'}
@@ -1003,64 +1038,100 @@ export default function CampaignsPage() {
                   </div>
 
                   {/* Campaign Title */}
-                  <div>
-                    <h1 className="text-3xl font-bold text-neutral-900 mb-2">{activeCampaignData.title}</h1>
-                    <p className="text-neutral-600 text-sm leading-relaxed line-clamp-3">{activeCampaignData.description}</p>
+                  <div className="w-full min-w-0">
+                    <h1 className="text-lg md:text-2xl font-bold text-neutral-900 mb-2 break-words overflow-hidden">{activeCampaignData.title}</h1>
+                    <p className="text-neutral-600 text-xs md:text-sm line-clamp-3 overflow-hidden">{activeCampaignData.description}</p>
                   </div>
 
-                  {/* Funding Progress Bar */}
-                  <div className="space-y-3 border-t border-b border-neutral-200 py-4">
-                    <div className="flex justify-between items-baseline">
+                  {/* Funding Progress */}
+                  <div className="space-y-2 md:space-y-3 border-t border-b border-neutral-200 py-3 md:py-4">
+                    <div className="flex justify-between items-baseline gap-2 flex-wrap">
                       <p className="text-xs font-semibold text-neutral-500 uppercase">Funding Progress</p>
                       <p className="text-sm font-bold text-neutral-900">
                         {activeCampaignData.current_funding ? ((activeCampaignData.current_funding / activeCampaignData.funding_goal) * 100).toFixed(0) : 0}%
                       </p>
                     </div>
-                    <div className="w-full bg-neutral-200 rounded-full h-3 overflow-hidden">
+                    <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 rounded-full"
+                        className="h-full bg-blue-500 transition-all duration-500 rounded-full"
                         style={{ width: `${Math.min(((activeCampaignData.current_funding || 0) / activeCampaignData.funding_goal) * 100, 100)}%` }}
                       ></div>
                     </div>
-                    <div className="flex justify-between text-xs text-neutral-600">
-                      <span>${activeCampaignData.current_funding?.toLocaleString() || "0"} raised</span>
-                      <span>${(activeCampaignData.funding_goal - (activeCampaignData.current_funding || 0)).toLocaleString()} to go</span>
+                    <div className="flex justify-between text-xs text-neutral-600 gap-2 flex-wrap">
+                      <span className="truncate">${activeCampaignData.current_funding?.toLocaleString() || "0"} raised</span>
+                      <span className="truncate">${(activeCampaignData.funding_goal - (activeCampaignData.current_funding || 0)).toLocaleString()} to go</span>
                     </div>
                   </div>
 
                   {/* Performance Metrics */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
-                      <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Backers</p>
-                      <p className="text-xl font-bold text-blue-900">{activeCampaignData.backer_count || 0}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                    <div className="bg-blue-50 rounded-lg p-2 md:p-3 border border-blue-200 text-center">
+                      <p className="text-xs text-blue-600 font-bold uppercase mb-1">Backers</p>
+                      <p className="text-lg md:text-xl font-bold text-blue-900">{activeCampaignData.backer_count || 0}</p>
                     </div>
-                    <div className="bg-purple-50 rounded-lg p-3 border border-purple-200 text-center">
-                      <p className="text-xs text-purple-600 font-semibold uppercase mb-1">Views</p>
-                      <p className="text-xl font-bold text-purple-900">{activeCampaignData.views || 0}</p>
+                    <div className="bg-purple-50 rounded-lg p-2 md:p-3 border border-purple-200 text-center">
+                      <p className="text-xs text-purple-600 font-bold uppercase mb-1">Views</p>
+                      <p className="text-lg md:text-xl font-bold text-purple-900">{activeCampaignData.views || 0}</p>
                     </div>
-                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200 text-center">
-                      <p className="text-xs text-orange-600 font-semibold uppercase mb-1">Conversion</p>
-                      <p className="text-xl font-bold text-orange-900">
-                        {activeCampaignData.views ? ((activeCampaignData.backer_count || 0) / activeCampaignData.views * 100).toFixed(1) : 0}%
+                    <div className="bg-orange-50 rounded-lg p-2 md:p-3 border border-orange-200 text-center">
+                      <p className="text-xs text-orange-600 font-bold uppercase mb-1">Conversion</p>
+                      <p className="text-lg md:text-xl font-bold text-orange-900">
+                        {activeCampaignData.views ? ((activeCampaignData.backer_count || 0) / activeCampaignData.views * 100).toFixed(0) : 0}%
                       </p>
                     </div>
                   </div>
 
-                  {/* Campaign Details */}
-                  <div className="bg-neutral-50 rounded-lg p-4 border border-neutral-200 space-y-2">
-                    <p className="text-xs font-semibold text-neutral-600 uppercase mb-3">Campaign Details</p>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-neutral-600">Goal Amount</span>
-                      <span className="font-bold text-neutral-900">${activeCampaignData.funding_goal?.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-neutral-600">Days Active</span>
-                      <span className="font-bold text-neutral-900">{activeCampaignData.days_active || 90} days</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-neutral-600">Status</span>
-                      <span className="font-bold text-neutral-900 capitalize">{activeCampaignData.status}</span>
-                    </div>
+                  {/* Survey Responses Section */}
+                  <div className="bg-neutral-50 rounded-lg p-3 md:p-4 border border-neutral-200 space-y-3 md:space-y-4">
+                    <p className="text-xs font-bold text-neutral-600 uppercase truncate">Survey Responses</p>
+                    
+                    {surveyLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin h-5 w-5 text-blue-600 mr-2"></div>
+                        <span className="text-sm text-neutral-600">Loading responses...</span>
+                      </div>
+                    ) : surveyResponses && surveyResponses.questions && surveyResponses.questions.length > 0 ? (
+                      <>
+                        {surveyResponses.questions.map((question: any, qIdx: number) => {
+                          const totalResponses = question.total_responses
+                          const responseCounts = question.response_counts || {}
+                          
+                          return (
+                            <div key={question.id || qIdx}>
+                              <div className="space-y-2">
+                                <p className="text-sm text-neutral-700 font-medium">{question.question_text}</p>
+                                <div className="space-y-1.5">
+                                  {Object.entries(responseCounts).map(([answer, count]: [string, any], idx: number) => {
+                                    const percentage = totalResponses > 0 ? ((count / totalResponses) * 100).toFixed(0) : 0
+                                    return (
+                                      <div key={idx} className="flex justify-between items-center text-xs">
+                                        <span className="text-neutral-600">{answer}</span>
+                                        <span className="font-semibold text-neutral-900">{percentage}%</span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                              {qIdx < surveyResponses.questions.length - 1 && (
+                                <div className="border-t border-neutral-200 my-3"></div>
+                              )}
+                            </div>
+                          )
+                        })}
+                        
+                        {/* View All Responses Link */}
+                        <div className="border-t border-neutral-200 pt-2">
+                          <a href="#" className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-semibold hover:underline">
+                            <span>◀</span> View all responses ({surveyResponses.total_responses} total)
+                          </a>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-4 text-center">
+                        <p className="text-sm text-neutral-500">No survey responses yet</p>
+                        <p className="text-xs text-neutral-400 mt-1">Survey responses will appear here as customers submit them</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Success Message */}
@@ -1071,13 +1142,13 @@ export default function CampaignsPage() {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 md:space-y-3">
                     <Button 
                       onClick={() => {
                         setSelectedImageIndex(0)
                         handleEditCampaign(activeCampaignData)
                       }}
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white h-12 font-semibold hover:from-blue-700 hover:to-blue-800 rounded-lg transition-all"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 md:h-11 font-semibold rounded-lg transition-all text-sm md:text-base"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit Campaign
@@ -1086,7 +1157,7 @@ export default function CampaignsPage() {
                       <Link href={`/campaign/${activeCampaignData.id}`}>
                         <Button 
                           variant="outline"
-                          className="w-full h-11 font-semibold rounded-lg transition-all hover:bg-blue-50 hover:border-blue-300"
+                          className="w-full h-10 md:h-11 font-semibold rounded-lg transition-all hover:bg-neutral-50 text-sm md:text-base"
                         >
                           👁️ View Live Campaign
                         </Button>
@@ -1096,7 +1167,7 @@ export default function CampaignsPage() {
                 </div>
               </div>
             </div>
-            </div>
+          </div>
           </Card>
         ) : (
           <Card className="p-12 text-center border-2 border-dashed border-neutral-300 bg-neutral-50">
@@ -1113,10 +1184,10 @@ export default function CampaignsPage() {
       </div>
 
       {/* All Campaigns Section */}
-      <div className="space-y-6 pt-8 border-t border-neutral-200">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="space-y-6 pt-6 md:pt-8 border-t border-neutral-200">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
           <div>
-            <h2 className="text-2xl font-bold">All Campaigns</h2>
+            <h2 className="text-xl md:text-2xl font-bold">All Campaigns</h2>
             {lastUpdated && (
               <p className="text-xs text-neutral-500 mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</p>
             )}

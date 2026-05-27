@@ -536,8 +536,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                       id="feedback"
                       name="feedback"
                       placeholder="Enter your feedback here..."
-                      maxlength="500"
-                      rows="3"
+                      maxLength="500"
+                      rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
                     ></textarea>
 

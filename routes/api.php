@@ -107,6 +107,11 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+// Creator Register endpoint (for frontend compatibility)
+Route::group(['prefix' => 'v2', 'middleware' => ['app_language']], function () {
+    Route::post('register', [CreatorController::class, 'register']);
+});
+
 // Creator Routes (FashionIndependent)
 Route::group(['prefix' => 'v2/creator', 'middleware' => ['app_language']], function () {
     Route::post('register', [CreatorController::class, 'register']);
@@ -152,6 +157,7 @@ Route::group(['prefix' => 'v2/campaign', 'middleware' => ['app_language']], func
     Route::get('active', [CampaignController::class, 'getActiveCampaigns']);
     Route::get('{id}', [CampaignController::class, 'show']);
     Route::get('{id}/pledges', [PledgeController::class, 'getCampaignPledges']);
+    Route::get('{id}/question-statistics', ['App\Http\Controllers\Api\V2\CampaignQuestionStatisticsController', 'getStatistics']);
 });
 
 // Pledge Routes (FashionIndependent)

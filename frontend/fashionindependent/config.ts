@@ -7,7 +7,7 @@ export const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost/
 export const AUTH_CONFIG = {
   loginEndpoint: "/auth/login",
   signupEndpoint: "/auth/signup",
-  creatorSignupEndpoint: "/creator/register",
+  creatorSignupEndpoint: "/register",
   logoutEndpoint: "/auth/logout",
 }
 

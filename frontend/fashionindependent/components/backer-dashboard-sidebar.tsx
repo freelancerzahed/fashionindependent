@@ -15,12 +15,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Heart, History, Settings, LogOut, User, ChevronDown, ShoppingCart } from "lucide-react"
+import { Heart, History, Settings, LogOut, User, ChevronDown, ShoppingCart, Briefcase } from "lucide-react"
+import { useState, useEffect } from "react"
+import { RoleTogglePill } from "@/components/role-toggle-pill"
 
 export function BackerDashboardSidebar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
+  const [activeRole, setActiveRole] = useState<"creator" | "backer" | null>(null)
+
+  // Check if user has both roles
+  const hasCreatorRole = user?.role === "creator" || user?.roles?.includes("creator")
+  const hasBackerRole = user?.role === "backer" || user?.roles?.includes("backer")
+  const hasBothRoles = hasCreatorRole && hasBackerRole
 
   const backerTabs = [
     { id: "overview", label: "Overview", href: "/dashboard" },
@@ -42,6 +50,25 @@ export function BackerDashboardSidebar() {
     await logout()
     router.push("/login")
   }
+
+  const handleSwitchRole = (newRole: "creator" | "backer") => {
+    setActiveRole(newRole)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dashboardActiveRole", newRole)
+      window.location.reload()
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dashboardActiveRole")
+      if (saved && (saved === "creator" || saved === "backer")) {
+        setActiveRole(saved as "creator" | "backer")
+      } else {
+        setActiveRole("backer")
+      }
+    }
+  }, [])
 
   if (!user) return null
 
@@ -111,6 +138,15 @@ export function BackerDashboardSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Role Toggle Pill */}
+        {activeRole && (
+          <RoleTogglePill 
+            activeRole={activeRole} 
+            onRoleChange={handleSwitchRole}
+            hasBothRoles={hasBothRoles}
+          />
+        )}
       </div>
 
       {/* Navigation Tabs - Member/Backer Specific */}

@@ -121,6 +121,14 @@ class AuthController extends Controller
 
             Log::info('User registered', ['user_id' => $user->id, 'user_type' => $user->user_type]);
 
+            // Build roles array based on user_type
+            $roles = [$user->user_type];
+            
+            // For testing: Give all creator users both creator and backer roles
+            if ($user->user_type === 'creator') {
+                $roles = ['creator', 'backer'];
+            }
+
             // Send welcome email (best-effort)
             try {
                 Mail::send('emails.welcome', ['user' => $user], function ($message) use ($user) {
@@ -135,6 +143,7 @@ class AuthController extends Controller
                 'status'  => true,
                 'message' => 'Registration successful!',
                 'user'    => $user,
+                'roles'   => $roles,
                 'token'   => $token
             ], 201);
         } catch (\Exception $e) {
@@ -345,10 +354,19 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Build roles array based on user_type and relationships
+        $roles = [$user->user_type];
+        
+        // For testing: Give all creator users both creator and backer roles
+        if ($user->user_type === 'creator') {
+            $roles = ['creator', 'backer'];
+        }
+
         return response()->json([
             'result' => true,
             'message' => 'Login successful',
             'user' => $user,
+            'roles' => $roles,
             'token' => $token
         ]);
     }

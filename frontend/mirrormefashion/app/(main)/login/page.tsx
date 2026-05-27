@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useId } from "react";
 import { useRouter } from "next/navigation";
 import { useUserContext } from "@/contexts/UserContext";
-import { Eye, EyeOff, Shield, Mail, Lock, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Shield, Mail, Lock, ArrowRight, Chrome } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,6 +98,36 @@ export default function LoginPage() {
       if (success) router.push("/profile");
     } catch (err) {
       console.error("[v0] Login failed:", err);
+    }
+  };
+
+  // Handle Google OAuth
+  const handleGoogleSignIn = () => {
+    try {
+      // Get the Google Client ID from environment
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+      const redirectUri = `${window.location.origin}/api/auth/google/callback`;
+      
+      if (!clientId) {
+        console.error("Google Client ID is not configured");
+        alert("Google Sign-in is not configured. Please contact support.");
+        return;
+      }
+
+      // Build Google OAuth URL
+      const googleAuthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      googleAuthUrl.searchParams.append("client_id", clientId);
+      googleAuthUrl.searchParams.append("redirect_uri", redirectUri);
+      googleAuthUrl.searchParams.append("response_type", "code");
+      googleAuthUrl.searchParams.append("scope", "openid email profile");
+      googleAuthUrl.searchParams.append("access_type", "offline");
+      googleAuthUrl.searchParams.append("prompt", "consent");
+
+      // Redirect to Google OAuth
+      window.location.href = googleAuthUrl.toString();
+    } catch (err) {
+      console.error("Google Sign-in error:", err);
+      alert("Failed to initiate Google Sign-in. Please try again.");
     }
   };
 
@@ -282,6 +312,49 @@ export default function LoginPage() {
                   <ArrowRight className="w-4 h-4" />
                 </div>
               )}
+            </Button>
+
+            {/* Divider */}
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center">
+                <div
+                  className="w-full border-t"
+                  style={{ borderColor: `hsl(var(--border))` }}
+                />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span
+                  className="px-2"
+                  style={{
+                    background: `hsl(var(--card))`,
+                    color: `hsl(var(--muted-foreground))`,
+                  }}
+                >
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            {/* Google OAuth Button */}
+            <Button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full h-12 font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+              style={{
+                background: "white",
+                border: `2px solid hsl(var(--border))`,
+                color: `hsl(var(--foreground))`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "hsl(var(--muted))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "white";
+              }}
+            >
+              <Chrome className="w-5 h-5" style={{ color: "#4285F4" }} />
+              <span>Sign in with Google</span>
             </Button>
 
             {/* Footer */}

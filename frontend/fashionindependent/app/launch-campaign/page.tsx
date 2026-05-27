@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/lib/auth-context"
 import { CampaignLaunchForm, type CampaignFormData } from "@/components/campaign-launch-form"
+import { BACKEND_URL } from "@/config"
 
 export default function LaunchCampaignPage() {
   const [step, setStep] = useState(1)
@@ -163,7 +164,7 @@ export default function LaunchCampaignPage() {
 
       let response;
       try {
-        response = await fetch("/api/campaign", {  // Using the main campaign endpoint
+        response = await fetch(`${BACKEND_URL}/campaign`, {  // Using the main campaign endpoint
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -306,7 +307,7 @@ export default function LaunchCampaignPage() {
         console.log("[Campaign] FormData prepared with", successfullyAddedFiles, "images")
         
         try {
-          const uploadResponse = await fetch(`/api/campaign/upload/${campaignId}`, {
+          const uploadResponse = await fetch(`${BACKEND_URL}/campaign/${campaignId}/upload-files`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,

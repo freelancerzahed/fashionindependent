@@ -121,19 +121,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (data.user && typeof data.user === "object" && data.user.id) {
         setUser(data.user);
 
+        // Handle both 'token' and 'access_token' response formats
+        const token = data.token || data.access_token;
+
         if (rememberMe) {
           localStorage.setItem("user", JSON.stringify(data.user));
-          if (data.token) {
-            localStorage.setItem("token", data.token);
-            document.cookie = `token=${data.token}; path=/; max-age=${
+          if (token) {
+            localStorage.setItem("token", token);
+            document.cookie = `token=${token}; path=/; max-age=${
               30 * 24 * 60 * 60
             }`; // 30 days
           }
         } else {
           sessionStorage.setItem("user", JSON.stringify(data.user));
-          if (data.token) {
-            sessionStorage.setItem("token", data.token);
-            document.cookie = `token=${data.token}; path=/`; // session cookie
+          if (token) {
+            sessionStorage.setItem("token", token);
+            document.cookie = `token=${token}; path=/`; // session cookie
           }
         }
       } else {

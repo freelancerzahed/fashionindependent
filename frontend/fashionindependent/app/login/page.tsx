@@ -21,6 +21,17 @@ export default function LoginPage() {
   const { login } = useAuth()
   const router = useRouter()
 
+  const handleGoogleSignIn = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""
+    const redirectUri = `${window.location.origin}/api/auth/google/callback`
+    const googleAuthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
+    googleAuthUrl.searchParams.append("client_id", clientId)
+    googleAuthUrl.searchParams.append("redirect_uri", redirectUri)
+    googleAuthUrl.searchParams.append("response_type", "code")
+    googleAuthUrl.searchParams.append("scope", "openid email profile")
+    window.location.href = googleAuthUrl.toString()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -28,7 +39,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
-      router.push("/dashboard/campaigns")
+      router.push("/dashboard/backer")
     } catch (err) {
       setError("Invalid email or password")
     } finally {
@@ -180,6 +191,7 @@ export default function LoginPage() {
                 type="button"
                 variant="outline"
                 className="w-full py-3 border-2 border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                onClick={handleGoogleSignIn}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
