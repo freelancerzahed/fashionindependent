@@ -328,6 +328,8 @@ function renderContent(loading: boolean, error: string | null, campaigns: Campai
             fundedAmount: campaign.current_funding,
             backers: campaign.backer_count,
             daysRemaining: campaign.days_remaining,
+            upvoteGoal: campaign.upvote_goal || 5000,
+            upvoteCount: campaign.upvote_count || 0,
             status:
               campaign.is_funded && campaign.days_remaining <= 0
                 ? "ended"

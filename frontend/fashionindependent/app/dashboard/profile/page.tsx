@@ -25,49 +25,89 @@ export default function CreatorProfilePage() {
   const { user, token } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Start as false since we have user context
   const [error, setError] = useState("")
+  const [hasFetched, setHasFetched] = useState(false)
 
   useEffect(() => {
-    if (token && user) {
+    // Only fetch once when we have token and haven't fetched yet
+    if (token && user && !hasFetched) {
       fetchProfileData()
+      setHasFetched(true)
+    } else if (!token && !user && !hasFetched) {
+      // Not authenticated
+      setLoading(false)
+      setError("Please log in to view your profile")
+      setHasFetched(true)
     }
-  }, [token, user])
+  }, []) // Empty dependency array - only run once on mount
 
   const fetchProfileData = async () => {
     setLoading(true)
     setError("")
     try {
-      // Fetch creator profile
-      const profileRes = await fetch(`${BACKEND_URL}/user/profile`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
+      // Create abort controller with 10 second timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      if (profileRes.ok) {
-        const profileData = await profileRes.json()
-        setProfile(profileData.data)
+      // Fetch creator profile with timeout
+      try {
+        const profileRes = await fetch(`${BACKEND_URL}/auth/profile/`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          setProfile(profileData.data)
+        } else if (profileRes.status === 401) {
+          setError("Unauthorized - Your session may have expired")
+          setLoading(false)
+          return
+        } else {
+          console.warn(`Profile API returned ${profileRes.status}`)
+        }
+      } catch (fetchErr) {
+        clearTimeout(timeoutId)
+        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+          console.error("Profile fetch timeout")
+          // Don't error on timeout, just continue
+        } else {
+          throw fetchErr
+        }
       }
 
       // Fetch campaigns
-      const campaignsRes = await fetch(`${BACKEND_URL}/campaign`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
+      try {
+        const campaignsRes = await fetch(`${BACKEND_URL}/campaign`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
 
-      if (campaignsRes.ok) {
-        const campaignsData = await campaignsRes.json()
-        setCampaigns(campaignsData.data || [])
+        if (campaignsRes.ok) {
+          const campaignsData = await campaignsRes.json()
+          setCampaigns(campaignsData.data || [])
+        } else if (campaignsRes.status === 401) {
+          setError("Unauthorized - Your session may have expired")
+          setLoading(false)
+          return
+        }
+      } catch (err) {
+        console.error("Campaigns fetch error:", err)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load profile"
-      setError(errorMessage)
+      console.error("Profile data error:", errorMessage)
+      setError("")  // Don't show error, just continue with partial data
     } finally {
       setLoading(false)
     }
@@ -79,6 +119,27 @@ export default function CreatorProfilePage() {
         <p className="text-neutral-600">Loading profile...</p>
       </div>
     )
+  }
+
+  if (error && !user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-neutral-600 mb-4">{error}</p>
+        <Link href="/login">
+          <Button>Go to Login</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  // Use user data from context if profile API call failed
+  const displayProfile = profile || {
+    name: user?.name || "Creator",
+    email: user?.email,
+    bio: null,
+    location: null,
+    website: null,
+    created_at: null,
   }
 
   return (
@@ -99,30 +160,30 @@ export default function CreatorProfilePage() {
           
           {/* Profile Info */}
           <div className="flex-1">
-            <h1 className="text-4xl font-bold mb-2">{profile?.name || user?.name || "Creator"}</h1>
-            <p className="text-lg text-neutral-600 mb-4">{profile?.title || "Independent Designer"}</p>
+            <h1 className="text-4xl font-bold mb-2">{displayProfile?.name || user?.name || "Creator"}</h1>
+            <p className="text-lg text-neutral-600 mb-4">{displayProfile?.title || "Independent Designer"}</p>
             
             {/* Description */}
-            {profile?.bio && (
-              <p className="text-neutral-700 max-w-2xl mb-4">{profile.bio}</p>
+            {displayProfile?.bio && (
+              <p className="text-neutral-700 max-w-2xl mb-4">{displayProfile.bio}</p>
             )}
 
             {/* Contact Info */}
             <div className="flex flex-wrap gap-4">
-              {profile?.email && (
-                <a href={`mailto:${profile.email}`} className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900">
+              {displayProfile?.email && (
+                <a href={`mailto:${displayProfile.email}`} className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900">
                   <Mail className="h-4 w-4" />
-                  <span className="text-sm">{profile.email}</span>
+                  <span className="text-sm">{displayProfile.email}</span>
                 </a>
               )}
-              {profile?.location && (
+              {displayProfile?.location && (
                 <div className="flex items-center gap-2 text-neutral-600">
                   <MapPin className="h-4 w-4" />
-                  <span className="text-sm">{profile.location}</span>
+                  <span className="text-sm">{displayProfile.location}</span>
                 </div>
               )}
-              {profile?.website && (
-                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900">
+              {displayProfile?.website && (
+                <a href={displayProfile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900">
                   <Globe className="h-4 w-4" />
                   <span className="text-sm">Website</span>
                 </a>
@@ -169,7 +230,7 @@ export default function CreatorProfilePage() {
           <CardContent className="pt-6">
             <div className="text-sm text-muted-foreground">Member Since</div>
             <div className="text-3xl font-bold mt-2">
-              {profile?.created_at ? new Date(profile.created_at).getFullYear() : "2025"}
+              {displayProfile?.created_at ? new Date(displayProfile.created_at).getFullYear() : "2025"}
             </div>
           </CardContent>
         </Card>

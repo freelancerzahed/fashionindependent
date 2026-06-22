@@ -245,6 +245,86 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
   const upvotePercentage = campaign.upvoteGoal ? (campaign.upvoteCount / campaign.upvoteGoal) * 100 : 0
   const selectedOption = campaign.pledgeOptions.find((p: PledgeOption) => p.id === selectedPledgeOption)
 
+  const handleVoteUp = async () => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      const token = localStorage.getItem("sanctum_token") || localStorage.getItem("auth_token") || ""
+      
+      const response = await fetch(`${apiUrl}/campaign/${campaignId}/vote`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` }),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          vote_type: "up",
+        }),
+      })
+
+      if (response.ok) {
+        setTimeout(() => {
+          router.push(`/vote-success?campaignId=${campaignId}&voteType=up`)
+        }, 300)
+      } else {
+        const errorData = await response.json()
+        alert(errorData.message || "Failed to submit vote. Please try again.")
+        setIsLoading(false)
+      }
+    } catch (err) {
+      console.error("Vote error:", err)
+      alert("An error occurred while voting. Please try again.")
+      setIsLoading(false)
+    }
+  }
+
+  const handleNoVote = async () => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      const token = localStorage.getItem("sanctum_token") || localStorage.getItem("auth_token") || ""
+      
+      const response = await fetch(`${apiUrl}/campaign/${campaignId}/vote`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` }),
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          vote_type: "no",
+        }),
+      })
+
+      if (response.ok) {
+        setTimeout(() => {
+          router.push(`/vote-success?campaignId=${campaignId}&voteType=no`)
+        }, 300)
+      } else {
+        const errorData = await response.json()
+        alert(errorData.message || "Failed to submit vote. Please try again.")
+        setIsLoading(false)
+      }
+    } catch (err) {
+      console.error("Vote error:", err)
+      alert("An error occurred while voting. Please try again.")
+      setIsLoading(false)
+    }
+  }
+
   const handleMakePledge = async () => {
     if (!user) {
       router.push("/login")
@@ -621,7 +701,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 <div className="flex space-x-4">
   {/* Primary CTA Button */}
   <Button
-    onClick={handleMakePledge}
+    onClick={handleVoteUp}
     disabled={isLoading}
     className="flex-1 py-5 sm:py-6 md:py-7 lg:py-8 text-base sm:text-lg md:text-lg font-bold bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:shadow-xl touch-manipulation"
     size="lg"
@@ -631,11 +711,12 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   {/* Secondary "No Vote" Button */}
   <Button
-    onClick={handleMakePledge}
-    className="flex-1 py-5 sm:py-6 md:py-7 lg:py-8 text-base sm:text-lg md:text-lg font-bold bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-200 active:scale-95 shadow-lg hover:shadow-xl touch-manipulation"
+    onClick={handleNoVote}
+    disabled={isLoading}
+    className="flex-1 py-5 sm:py-6 md:py-7 lg:py-8 text-base sm:text-lg md:text-lg font-bold bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-200 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:shadow-xl touch-manipulation"
     size="lg"
   >
-    No Vote
+    {isLoading ? "Processing..." : "No Vote"}
   </Button>
 </div>
 

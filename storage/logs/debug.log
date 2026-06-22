@@ -1,0 +1,14 @@
+2026-06-22 16:55:20 - news_list called
+2026-06-22 16:55:20 - Found 1 results
+2026-06-22 16:55:20 - Returning 1 items
+2026-06-22 16:56:02 - news_list called
+2026-06-22 16:56:02 - Found 1 results
+2026-06-22 16:56:02 - Returning 1 items
+2026-06-22 16:57:30 - news_list called
+2026-06-22 16:57:31 - Query executed: {"query":"select `id`, `title`, `slug`, `short_description`, `banner`, `category_id`, `status`, `created_at`, `type` from `blogs` where `status` = ? and `type` = ? and `blogs`.`deleted_at` is null order by `created_at` desc","bindings":[1,"news"],"time":14.12}
+2026-06-22 16:57:31 - Results count: 1 items
+2026-06-22 16:57:31 - Pagination returned: 1 items
+2026-06-22 16:58:17 - news_list called
+2026-06-22 16:58:17 - Query executed: {"query":"select `id`, `title`, `slug`, `short_description`, `banner`, `category_id`, `status`, `created_at`, `type` from `blogs` where `status` = ? and `type` = ? and `blogs`.`deleted_at` is null order by `created_at` desc","bindings":[1,"news"],"time":26.69}
+2026-06-22 16:58:17 - Results count: 1 items
+2026-06-22 16:58:17 - Pagination returned: 1 items

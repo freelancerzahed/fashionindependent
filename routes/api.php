@@ -153,6 +153,11 @@ Route::group(['prefix' => 'v2/campaign', 'middleware' => ['app_language']], func
         });
     });
     
+    // Vote endpoint - requires auth but handles it in controller
+    Route::middleware('parse_bearer_token')->group(function () {
+        Route::post('{id}/vote', [CampaignController::class, 'vote']);
+    });
+    
     // Public routes (less specific patterns)
     Route::get('active', [CampaignController::class, 'getActiveCampaigns']);
     Route::get('{id}', [CampaignController::class, 'show']);
@@ -566,6 +571,17 @@ Route::group(['prefix' => 'v2', 'middleware' => ['app_language']], function () {
     Route::controller(BlogController::class)->group(function () {
         Route::get('blog-list', 'blog_list');
         Route::get('blog-details/{slug}', 'blog_details');
+        Route::get('news-list', 'news_list');
+    });
+
+    Route::controller(PressController::class)->group(function () {
+        Route::get('press', 'index');
+        Route::get('press/{slug}', 'show');
+        Route::get('press-media-kit', 'mediaKit');
+    });
+
+    Route::controller(DebugController::class)->group(function () {
+        Route::get('debug/check-blogs', 'checkBlogs');
     });
 
     // Route::controller(WholesaleProductController::class)->group(function () {

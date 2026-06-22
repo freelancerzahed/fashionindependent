@@ -19,6 +19,7 @@ class Blog extends Model
         'description',
         'category_id',
         'status',
+        'type',
         'banner',
         'meta_title',
         'meta_img',

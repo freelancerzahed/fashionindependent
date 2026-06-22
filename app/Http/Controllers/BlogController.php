@@ -77,6 +77,7 @@ class BlogController extends Controller
         $blog->meta_img = $request->meta_img;
         $blog->meta_description = $request->meta_description;
         $blog->meta_keywords = $request->meta_keywords;
+        $blog->type = $request->type ?? 'blog';
 
         $blog->save();
 
@@ -133,6 +134,7 @@ class BlogController extends Controller
         $blog->meta_img = $request->meta_img;
         $blog->meta_description = $request->meta_description;
         $blog->meta_keywords = $request->meta_keywords;
+        $blog->type = $request->type ?? 'blog';
 
         $blog->save();
 

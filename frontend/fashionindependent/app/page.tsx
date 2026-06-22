@@ -24,6 +24,68 @@ interface BlogResponse {
   }
 }
 
+interface Campaign {
+  id: string | number
+  title: string
+  creator?: { name: string }
+  image?: string
+  product_images?: Array<{ path?: string; url?: string }>
+  current_funding?: number
+  funding_goal: number
+  backer_count?: number
+  days_remaining?: number
+  upvote_count?: number
+  upvote_goal?: number
+  product_name?: string
+  description?: string
+  is_funded?: boolean
+  created_at: string
+}
+
+interface CampaignResponse {
+  status: boolean
+  data: Campaign[]
+}
+
+async function fetchCampaigns(): Promise<Campaign[]> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL
+
+    if (!apiUrl) {
+      console.error("❌ API URL not configured")
+      return []
+    }
+
+    console.log("📡 Server: Fetching campaigns from", `${apiUrl}/campaign/active?per_page=6`)
+
+    const response = await fetch(`${apiUrl}/campaign/active?per_page=6`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      next: { revalidate: 3600 }
+    })
+
+    if (!response.ok) {
+      console.error(`❌ API error: ${response.status}`)
+      return []
+    }
+
+    const data: CampaignResponse = await response.json()
+
+    if (data.status && Array.isArray(data.data)) {
+      console.log("✓ Successfully fetched", data.data.length, "campaigns for home")
+      return data.data
+    }
+
+    return []
+  } catch (err) {
+    console.error("❌ Error fetching campaigns:", err)
+    return []
+  }
+}
+
 async function fetchArticles(): Promise<BlogArticle[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL
@@ -64,7 +126,10 @@ async function fetchArticles(): Promise<BlogArticle[]> {
 }
 
 export default async function HomePage() {
-  const articles = await fetchArticles()
+  const [articles, campaigns] = await Promise.all([
+    fetchArticles(),
+    fetchCampaigns()
+  ])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -128,7 +193,7 @@ export default async function HomePage() {
         </section>
 
         {/* Featured Campaigns */}
-        <FeaturedCampaigns />
+        <FeaturedCampaigns initialCampaigns={campaigns} />
 
         {/* Latest Articles - Now Dynamic */}
         <LatestArticles initialArticles={articles} />

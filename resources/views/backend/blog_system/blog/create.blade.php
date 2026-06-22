@@ -37,6 +37,18 @@
                         </div>
                     </div>
                     
+                    <div class="form-group row">
+                        <label class="col-md-3 col-form-label">
+                            {{translate('Type')}}
+                            <span class="text-danger">*</span>
+                        </label>
+                        <div class="col-md-9">
+                            <select class="form-control aiz-selectpicker" name="type" id="blog_type" required onchange="toggleImageUpload()">
+                                <option value="blog">{{translate('Blog')}}</option>
+                                <option value="news">{{translate('News')}}</option>
+                            </select>
+                        </div>
+                    </div>
                     
                     <div class="form-group row">
                         <label class="col-md-3 col-form-label">{{translate('Slug')}}
@@ -46,7 +58,7 @@
                         </div>
                     </div>
                     
-                    <div class="form-group row">
+                    <div class="form-group row" id="banner_upload_section">
                         <label class="col-md-3 col-form-label" for="signinSrEmail">
                             {{translate('Banner')}} 
                             <small>(1300x650)</small>
@@ -147,5 +159,22 @@
         let output = str.replace(/\s+/g, '-').toLowerCase();
         $('#slug').val(output);
     }
+
+    function toggleImageUpload() {
+        const blogType = document.getElementById('blog_type').value;
+        const bannerSection = document.getElementById('banner_upload_section');
+        
+        // Show banner upload only for 'blog' type, hide for 'news'
+        if (blogType === 'news') {
+            bannerSection.style.display = 'none';
+        } else {
+            bannerSection.style.display = 'flex';
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleImageUpload();
+    });
 </script>
 @endsection

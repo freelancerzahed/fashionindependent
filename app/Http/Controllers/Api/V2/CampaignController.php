@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V2;
 
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
+use App\Models\CampaignVote;
 use App\Models\Creator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -758,7 +759,7 @@ class CampaignController extends Controller
     /**
      * Get campaign by ID
      */
-    public function show($campaignId)
+    public function show(Request $request, $campaignId)
     {
         $campaign = Campaign::with(['creator', 'pledges'])->find($campaignId);
         if (!$campaign) {
@@ -781,6 +782,17 @@ class CampaignController extends Controller
             }
         }
 
+        // Check if current user has voted
+        $userVote = null;
+        $hasVoted = false;
+        $user = $request->user();
+        if ($user) {
+            $userVote = CampaignVote::where('user_id', $user->id)
+                ->where('campaign_id', $campaignId)
+                ->first();
+            $hasVoted = $userVote ? true : false;
+        }
+
         return response()->json([
             'status' => true,
             'campaign' => $campaign,
@@ -788,6 +800,8 @@ class CampaignController extends Controller
             'days_remaining' => $campaign->getDaysRemaining(),
             'is_funded' => $campaign->isFunded(),
             'is_active' => $campaign->isActive(),
+            'user_has_voted' => $hasVoted,
+            'user_vote_type' => $hasVoted ? $userVote->vote_type : null,
         ]);
     }
 
@@ -811,7 +825,7 @@ class CampaignController extends Controller
                     'id', 'creator_id', 'user_id', 'status', 'title', 'description',
                     'funding_goal', 'current_funding', 'backer_count', 'days_active',
                     'product_name', 'product_description', 'product_images', 'tech_pack_file',
-                    'launch_date', 'end_date',
+                    'launch_date', 'end_date', 'upvote_count', 'upvote_goal',
                     'created_at', 'updated_at'
                 ])
                 ->with(['creator'])
@@ -878,7 +892,7 @@ class CampaignController extends Controller
                     'id', 'creator_id', 'user_id', 'status', 'title', 'description',
                     'funding_goal', 'current_funding', 'backer_count', 'days_active',
                     'product_name', 'product_description', 'product_images', 'tech_pack_file',
-                    'launch_date', 'end_date',
+                    'launch_date', 'end_date', 'upvote_count', 'upvote_goal',
                     'created_at', 'updated_at'
                 ])
                 ->with(['creator'])
@@ -1203,7 +1217,7 @@ class CampaignController extends Controller
                     'id', 'creator_id', 'user_id', 'title', 'description',
                     'funding_goal', 'current_funding', 'backer_count',
                     'product_name', 'product_images', 'launch_date', 'end_date',
-                    'created_at', 'views', 'shares'
+                    'created_at', 'views', 'shares', 'upvote_count', 'upvote_goal'
                 ])
                 ->with(['creator:id,brand_name,profile_image']);
 
@@ -1241,12 +1255,24 @@ class CampaignController extends Controller
 
             $campaigns = $query->paginate($perPage, ['*'], 'page', $page);
 
-            $campaigns->getCollection()->transform(function ($campaign) {
+            $user = $request->user();
+
+            $campaigns->getCollection()->transform(function ($campaign) use ($user) {
                 // Properly handle product_images - decode if it's JSON or serialized
                 $productImages = $campaign->product_images ?? [];
                 if (is_string($productImages)) {
                     $decoded = json_decode($productImages, true);
                     $productImages = $decoded ?? [];
+                }
+
+                // Check if current user has voted
+                $userVote = null;
+                $hasVoted = false;
+                if ($user) {
+                    $userVote = CampaignVote::where('user_id', $user->id)
+                        ->where('campaign_id', $campaign->id)
+                        ->first();
+                    $hasVoted = $userVote ? true : false;
                 }
                 
                 return [
@@ -1270,6 +1296,11 @@ class CampaignController extends Controller
                     'is_funded' => $campaign->isFunded(),
                     'views' => $campaign->views ?? 0,
                     'shares' => $campaign->shares ?? 0,
+                    'upvote_count' => $campaign->upvote_count ?? 0,
+                    'upvote_goal' => $campaign->upvote_goal ?? 5000,
+                    'upvote_percentage' => $campaign->upvote_goal ? (($campaign->upvote_count ?? 0) / $campaign->upvote_goal) * 100 : 0,
+                    'user_vote' => $hasVoted ? $userVote->vote_type : null,
+                    'user_has_voted' => $hasVoted,
                 ];
             });
 
@@ -1306,6 +1337,96 @@ class CampaignController extends Controller
                     'backend_running' => true,
                     'database_connected' => false,
                 ]
+            ], 500);
+        }
+    }
+
+    /**
+     * Vote on a campaign (vote up or no vote)
+     */
+    public function vote(Request $request, $campaignId)
+    {
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Authentication required'
+                ], 401);
+            }
+
+            $campaign = Campaign::find($campaignId);
+            if (!$campaign) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Campaign not found'
+                ], 404);
+            }
+
+            // Validate vote type
+            $voteType = $request->input('vote_type');
+            if (!in_array($voteType, ['up', 'no'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid vote type. Must be "up" or "no"'
+                ], 422);
+            }
+
+            // Check if user already voted on this campaign
+            $existingVote = CampaignVote::where('user_id', $user->id)
+                ->where('campaign_id', $campaignId)
+                ->first();
+
+            if ($existingVote) {
+                // User has already voted on this campaign
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You have already voted on this campaign. You can only vote once per campaign.',
+                    'voted' => true,
+                    'current_vote_type' => $existingVote->vote_type,
+                ], 422);
+            }
+
+            // Create new vote record
+            CampaignVote::create([
+                'user_id' => $user->id,
+                'campaign_id' => $campaignId,
+                'vote_type' => $voteType,
+            ]);
+
+            // Only increment upvote_count if vote_type is 'up'
+            if ($voteType === 'up') {
+                $campaign->increment('upvote_count');
+            }
+
+            // Log the vote
+            Log::info('Campaign voted', [
+                'user_id' => $user->id,
+                'campaign_id' => $campaignId,
+                'vote_type' => $voteType,
+                'new_upvote_count' => $campaign->upvote_count,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Vote recorded successfully',
+                'campaign' => [
+                    'id' => $campaign->id,
+                    'upvote_count' => $campaign->upvote_count,
+                    'upvote_goal' => $campaign->upvote_goal,
+                    'upvote_percentage' => $campaign->upvote_goal ? ($campaign->upvote_count / $campaign->upvote_goal) * 100 : 0,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error recording vote', [
+                'campaign_id' => $campaignId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error recording vote',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred',
             ], 500);
         }
     }

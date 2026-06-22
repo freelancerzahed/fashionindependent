@@ -1,0 +1,98 @@
+[2026-06-01 18:19:00] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/pledge/user","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 203|Qa2MiqLXVbwYFkhHb9o...","is_bearer":true} 
+[2026-06-01 18:19:00] local.INFO: Extracted bearer token {"token_preview":"203|Qa2Miq...","token_length":52} 
+[2026-06-01 18:19:00] local.INFO: Found personal access token {"token_id":203,"user_id":78,"revoked":null} 
+[2026-06-01 18:19:00] local.INFO: User authenticated via bearer token {"user_id":78,"user_email":"hisabkori.info@gmail.com"} 
+[2026-06-01 18:19:02] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/pledge/user","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 203|Qa2MiqLXVbwYFkhHb9o...","is_bearer":true} 
+[2026-06-01 18:19:02] local.INFO: Extracted bearer token {"token_preview":"203|Qa2Miq...","token_length":52} 
+[2026-06-01 18:19:02] local.INFO: Found personal access token {"token_id":203,"user_id":78,"revoked":null} 
+[2026-06-01 18:19:02] local.INFO: User authenticated via bearer token {"user_id":78,"user_email":"hisabkori.info@gmail.com"} 
+[2026-06-01 18:22:41] local.INFO: User created for creator registration {"user_id":85,"email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:22:41] local.INFO: Creator profile created {"user_id":85,"creator_id":26} 
+[2026-06-01 18:22:41] local.INFO: Creator registered successfully {"user_id":85,"creator_id":26,"email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:22:44] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:22:44] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:22:44] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:22:44] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:22:44] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":0,"statuses":[]} 
+[2026-06-01 18:22:50] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:22:50] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:22:50] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:22:50] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:22:50] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":0,"statuses":[]} 
+[2026-06-01 18:22:54] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:22:54] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:22:54] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:22:54] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:22:54] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":0,"statuses":[]} 
+[2026-06-01 18:22:55] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:22:55] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:22:55] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:22:55] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:22:55] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":0,"statuses":[]} 
+[2026-06-01 18:24:25] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"POST","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:24:25] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:24:25] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:24:25] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:24:25] local.INFO: Campaign store() called - Raw Request Data {"content_type":"application/json","request_keys":["title","description","funding_goal","product_name","product_description","materials","colors","sizes","projectDuration","upvote_goal","previous_sales","existing_inventory","manufacturer_restock","manufacturing_assistance","business_registration"],"has_files":false,"file_keys":[]} 
+[2026-06-01 18:24:25] local.INFO: Campaign store() called with details {"method":"POST","path":"api/v2/campaign","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","user_id":85,"user_email":"fsdfsdf@gdfg.com","is_authenticated":true} 
+[2026-06-01 18:24:25] local.INFO: Campaign creation request received {"user_id":85,"request_keys":["title","description","funding_goal","product_name","product_description","materials","colors","sizes","projectDuration","upvote_goal","previous_sales","existing_inventory","manufacturer_restock","manufacturing_assistance","business_registration"],"title":"RENAME DATABASE old_database_n","product_name":"RENAME DATABASE old_database_n","description_length":470,"materials_count":1,"colors_count":1,"sizes_count":4,"projectDuration":14,"upvote_goal":5000} 
+[2026-06-01 18:24:25] local.INFO: Campaign created successfully {"campaign_id":109,"creator_id":26,"user_id":85} 
+[2026-06-01 18:24:28] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign/109/upload-files","method":"POST","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:24:28] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:24:28] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:24:28] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:24:28] local.INFO: uploadFiles() method called {"campaign_id":"109","method":"POST","content_type":"multipart/form-data; boundary=----WebKitFormBoundaryWj3hsN6vr6OkBWis"} 
+[2026-06-01 18:24:28] local.INFO: File upload request received {"campaign_id":"109","has_product_images":true,"has_tech_pack":false,"request_keys":["product_images"],"product_images_type":"array","all_files_info":{"product_images":{"key":"product_images","count":3,"type":"array","first_item":"Illuminate\\Http\\UploadedFile"}}} 
+[2026-06-01 18:24:28] local.INFO: Checking all input and files {"campaign_id":"109","input_keys":["image_metadata","product_images"],"file_keys":["product_images"],"all_files_count":1} 
+[2026-06-01 18:24:28] local.INFO: Product images received {"campaign_id":"109","is_array":true,"count":3,"first_item_type":"Illuminate\\Http\\UploadedFile"} 
+[2026-06-01 18:24:28] local.INFO: Parsed image metadata {"campaign_id":"109","metadata_count":3,"metadata":[{"fileIndex":0,"type":"front","name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970},{"fileIndex":1,"type":"back","name":"Dashboard-Karbar-11-03-2025_06_20_PM.png","size":303849},{"fileIndex":2,"type":"additional","name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970}]} 
+[2026-06-01 18:24:28] local.INFO: Found images using product_images notation {"campaign_id":"109","count":3} 
+[2026-06-01 18:24:28] local.INFO: Processing product images {"campaign_id":"109","image_count":3,"metadata_count":3,"files_found_in_allfiles":true} 
+[2026-06-01 18:24:28] local.INFO: Image found in array {"campaign_id":"109","index":0,"name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"valid":true} 
+[2026-06-01 18:24:28] local.INFO: Image found in array {"campaign_id":"109","index":1,"name":"Dashboard-Karbar-11-03-2025_06_20_PM.png","size":303849,"valid":true} 
+[2026-06-01 18:24:28] local.INFO: Image found in array {"campaign_id":"109","index":2,"name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"valid":true} 
+[2026-06-01 18:24:28] local.INFO: Processing image {"campaign_id":"109","file_index":0,"type":"front","name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","original_name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"mime":"image/png"} 
+[2026-06-01 18:24:28] local.INFO: About to store image file {"campaign_id":"109","type":"front","filename":"campaign_109_front_1780338268_6a1dce5c76d98.png","directory":"campaigns/products","original_name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"mime":"image/png","extension":"png"} 
+[2026-06-01 18:24:28] local.INFO: Starting file storage {"campaign_id":"109","original_name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"mime":"image/png","temp_path":false} 
+[2026-06-01 18:24:28] local.INFO: About to store file {"campaign_id":"109","destination":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_front_1780338268_6a1dce5c78aca.png","file_size":286970} 
+[2026-06-01 18:24:28] local.INFO: Temp file info {"temp_path":"C:\\Windows\\Temp\\phpCD7.tmp","exists":true,"readable":true,"size":286970} 
+[2026-06-01 18:24:28] local.INFO: File copied successfully {"campaign_id":"109","destination":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_front_1780338268_6a1dce5c78aca.png"} 
+[2026-06-01 18:24:28] local.INFO: File copied successfully {"campaign_id":"109","storage_path":"campaigns/products/campaign_109_front_1780338268_6a1dce5c78aca.png","full_path":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_front_1780338268_6a1dce5c78aca.png","file_exists":true,"file_size":286970} 
+[2026-06-01 18:24:29] local.INFO: Processing image {"campaign_id":"109","file_index":1,"type":"back","name":"Dashboard-Karbar-11-03-2025_06_20_PM.png","original_name":"Dashboard-Karbar-11-03-2025_06_20_PM.png","size":303849,"mime":"image/png"} 
+[2026-06-01 18:24:29] local.INFO: About to store image file {"campaign_id":"109","type":"back","filename":"campaign_109_back_1780338269_6a1dce5de7040.png","directory":"campaigns/products","original_name":"Dashboard-Karbar-11-03-2025_06_20_PM.png","size":303849,"mime":"image/png","extension":"png"} 
+[2026-06-01 18:24:29] local.INFO: Starting file storage {"campaign_id":"109","original_name":"Dashboard-Karbar-11-03-2025_06_20_PM.png","size":303849,"mime":"image/png","temp_path":false} 
+[2026-06-01 18:24:29] local.INFO: About to store file {"campaign_id":"109","destination":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_back_1780338269_6a1dce5de829f.png","file_size":303849} 
+[2026-06-01 18:24:29] local.INFO: Temp file info {"temp_path":"C:\\Windows\\Temp\\phpCE8.tmp","exists":true,"readable":true,"size":303849} 
+[2026-06-01 18:24:29] local.INFO: File copied successfully {"campaign_id":"109","destination":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_back_1780338269_6a1dce5de829f.png"} 
+[2026-06-01 18:24:29] local.INFO: File copied successfully {"campaign_id":"109","storage_path":"campaigns/products/campaign_109_back_1780338269_6a1dce5de829f.png","full_path":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_back_1780338269_6a1dce5de829f.png","file_exists":true,"file_size":303849} 
+[2026-06-01 18:24:29] local.INFO: Processing image {"campaign_id":"109","file_index":2,"type":"additional","name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","original_name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"mime":"image/png"} 
+[2026-06-01 18:24:29] local.INFO: About to store image file {"campaign_id":"109","type":"additional","filename":"campaign_109_additional_1780338269_6a1dce5deab01.png","directory":"campaigns/products","original_name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"mime":"image/png","extension":"png"} 
+[2026-06-01 18:24:29] local.INFO: Starting file storage {"campaign_id":"109","original_name":"Dashboard-Karbar-11-03-2025_04_39_PM.png","size":286970,"mime":"image/png","temp_path":false} 
+[2026-06-01 18:24:29] local.INFO: About to store file {"campaign_id":"109","destination":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_additional_1780338269_6a1dce5dedc84.png","file_size":286970} 
+[2026-06-01 18:24:29] local.INFO: Temp file info {"temp_path":"C:\\Windows\\Temp\\phpCE9.tmp","exists":true,"readable":true,"size":286970} 
+[2026-06-01 18:24:29] local.INFO: File copied successfully {"campaign_id":"109","destination":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_additional_1780338269_6a1dce5dedc84.png"} 
+[2026-06-01 18:24:29] local.INFO: File copied successfully {"campaign_id":"109","storage_path":"campaigns/products/campaign_109_additional_1780338269_6a1dce5dedc84.png","full_path":"D:\\laragon\\www\\mirrormefashion\\storage\\app\\public\\campaigns\\products\\campaign_109_additional_1780338269_6a1dce5dedc84.png","file_exists":true,"file_size":286970} 
+[2026-06-01 18:24:29] local.INFO: No tech pack in request {"campaign_id":"109"} 
+[2026-06-01 18:24:29] local.INFO: Merged product images {"campaign_id":"109","existing_count":0,"new_count":3,"merged_count":3} 
+[2026-06-01 18:24:39] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:24:39] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:24:39] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:24:39] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:24:39] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["draft"]} 
+[2026-06-01 18:24:41] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:24:41] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:24:41] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:24:41] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:24:41] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["draft"]} 
+[2026-06-01 18:24:44] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign/109/launch","method":"POST","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:24:44] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:24:44] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:24:44] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:24:44] local.INFO: Campaign launch attempt {"campaign_id":"109","current_status":"draft","user_id":85} 
+[2026-06-01 18:24:44] local.INFO: Updating campaign status {"campaign_id":"109","from_status":"draft","to_status":"live"} 
+[2026-06-01 18:24:44] local.INFO: Campaign launched successfully {"campaign_id":"109","status_after_update":"live","user_id":85} 
+[2026-06-01 18:24:47] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-01 18:24:47] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-01 18:24:47] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-01 18:24:47] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-01 18:24:47] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 

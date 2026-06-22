@@ -1,0 +1,38 @@
+[2026-06-05 17:10:08] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/pledge/user","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:10:09] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:10:09] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:10:09] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:10:13] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/pledge/user","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:10:13] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:10:13] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:10:13] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:25:13] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:25:13] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:25:13] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:25:13] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:25:13] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 
+[2026-06-05 17:25:15] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:25:15] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:25:15] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:25:15] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:25:15] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 
+[2026-06-05 17:25:30] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:25:30] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:25:30] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:25:30] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:25:30] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 
+[2026-06-05 17:26:10] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:26:10] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:26:10] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:26:10] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:26:10] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 
+[2026-06-05 17:26:36] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:26:36] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:26:36] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:26:36] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:26:36] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 
+[2026-06-05 17:27:01] local.INFO: ParseBearerToken middleware invoked {"path":"/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"Bearer 204|PS2XA2ZlPwLiWXVxcT6...","is_bearer":true} 
+[2026-06-05 17:27:01] local.INFO: Extracted bearer token {"token_preview":"204|PS2XA2...","token_length":52} 
+[2026-06-05 17:27:01] local.INFO: Found personal access token {"token_id":204,"user_id":85,"revoked":null} 
+[2026-06-05 17:27:01] local.INFO: User authenticated via bearer token {"user_id":85,"user_email":"fsdfsdf@gdfg.com"} 
+[2026-06-05 17:27:01] local.INFO: Returning campaigns for user {"user_id":85,"campaign_count":1,"statuses":["live"]} 

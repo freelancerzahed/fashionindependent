@@ -114,6 +114,14 @@ class Campaign extends Model
     }
 
     /**
+     * Get all votes for this campaign.
+     */
+    public function votes(): HasMany
+    {
+        return $this->hasMany(CampaignVote::class);
+    }
+
+    /**
      * Check if campaign is currently active.
      */
     public function isActive(): bool
