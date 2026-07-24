@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,11 +29,33 @@ export default function SignupPage() {
     role: "backer" as "backer" | "creator",
     age: false,
     terms: false,
+    providerId: "",
+    avatar: "",
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const { signup } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isGoogleCompletion = searchParams.get("google") === "1" || searchParams.get("google") === "true"
+
+  useEffect(() => {
+    const roleFromQuery = searchParams.get("role")
+    const nameFromQuery = searchParams.get("name") || ""
+    const emailFromQuery = searchParams.get("email") || ""
+    const avatarFromQuery = searchParams.get("avatar") || ""
+    const providerIdFromQuery = searchParams.get("provider_id") || ""
+
+    setFormData((prev) => ({
+      ...prev,
+      name: nameFromQuery || prev.name,
+      email: emailFromQuery || prev.email,
+      // If this is a Google completion, default to backer unless explicitly set
+      role: isGoogleCompletion ? (roleFromQuery === "creator" ? "creator" : "backer") : (roleFromQuery === "creator" ? "creator" : prev.role),
+      providerId: providerIdFromQuery,
+      avatar: avatarFromQuery,
+    }))
+  }, [searchParams])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -65,18 +87,25 @@ export default function SignupPage() {
       setError("Email is required")
       return
     }
-    if (!formData.password) {
-      setError("Password is required")
-      return
+
+    // If this is a social completion (providerId present), password is optional
+    if (!formData.providerId) {
+      if (!formData.password) {
+        setError("Password is required")
+        return
+      }
+
+      if (formData.password.length < 6) {
+        setError("Password must be at least 6 characters")
+        return
+      }
     }
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters")
-      return
-    }
+
     if (!formData.age) {
       setError("Please confirm you are 18 years or older")
       return
     }
+
     if (!formData.terms) {
       setError("Please agree to the terms and conditions")
       return
@@ -86,8 +115,12 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      await signup(formData.email, formData.password, formData.name, formData.role)
-      router.push("/dashboard")
+      await signup(formData.email, formData.password, formData.name, formData.role, {
+        gender: formData.gender,
+        ageRange: formData.ageRange,
+        providerId: formData.providerId,
+      })
+      router.push(formData.role === "creator" ? "/launch-campaign" : "/dashboard")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create account")
     } finally {
@@ -105,6 +138,16 @@ export default function SignupPage() {
                 <Smile className="w-6 h-6 text-white" />
               </div>
               {/* Header with sign in link */}
+              {isGoogleCompletion && formData.avatar && (
+                <div className="flex justify-center mb-6">
+                  <img
+                    src={formData.avatar}
+                    alt="Google profile"
+                    className="h-16 w-16 rounded-full border border-neutral-200 object-cover"
+                  />
+                </div>
+              )}
+
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold mb-4">Become a Member</h1>
                 <p className="text-sm text-neutral-600 mb-2">
@@ -145,7 +188,7 @@ export default function SignupPage() {
                       }`}
                       onClick={() => handleRoleChange("creator")}
                     >
-                      Creator
+                      Creative
                     </Button>
                   </div>
                 </div>
@@ -215,7 +258,8 @@ export default function SignupPage() {
                         value={formData.email}
                         onChange={handleInputChange}
                         required
-                        className="border border-neutral-200 bg-neutral-50 focus:bg-white"
+                        readOnly={isGoogleCompletion}
+                        className="border border-neutral-200 bg-neutral-50 focus:bg-white disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -230,9 +274,12 @@ export default function SignupPage() {
                         placeholder="••••••••"
                         value={formData.password}
                         onChange={handleInputChange}
-                        required
+                        required={!isGoogleCompletion}
                         className="border border-neutral-200 bg-neutral-50 focus:bg-white"
                       />
+                      {isGoogleCompletion && (
+                        <p className="text-xs text-neutral-500 mt-2">Password is optional for Google sign-up — enter one if you want a local password.</p>
+                      )}
                     </div>
 
                     {/* Checkboxes */}

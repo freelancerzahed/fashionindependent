@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
+use App\Services\FashionIndependentEmailService;
 
 class AuthController extends Controller
 {
@@ -34,11 +35,15 @@ class AuthController extends Controller
         // ✅ Validation rules
         $validator = Validator::make($request->all(), [
             'name'              => 'required|string|max:255',
-            'email'             => 'required|email|unique:users,email',
+            'email'             => [
+                'required',
+                'email',
+                Rule::when(!$request->filled('provider_id'), ['unique:users,email'])
+            ],
             'password'          => 'required|min:6|max:255',
             'role'              => 'nullable|in:customer,creator,backer', // Optional role from frontend
             // Optional body data fields for MirrorMe Fashion
-            'gender'            => 'nullable|in:male,female',
+            'gender'            => 'nullable|in:male,female,non-binary,prefer-not-to-say',
             'weight'            => 'nullable|numeric|min:1|max:500',
             'height'            => 'nullable|numeric|min:30|max:300',
             'bmi'               => 'nullable|numeric',
@@ -58,62 +63,85 @@ class AuthController extends Controller
         }
 
         try {
-            // Create user
-            $user = new User();
-            $user->name = $request->name;
-            $user->email = $request->email;
-            $user->password = Hash::make($request->password);
-            $user->user_name = Str::random(12);
-            $user->user_type = $request->role ?? 'customer'; // Set user type based on role
-            $user->email_verified_at = now();
-            $user->save();
+            $existingUser = User::where('email', $request->email)->first();
+            $isProfileCompletion = $request->filled('provider_id') && $existingUser;
 
-            Log::info('User created during signup', ['user_id' => $user->id, 'user_type' => $user->user_type, 'role' => $request->role]);
+            if ($isProfileCompletion) {
+                $user = $existingUser;
+                $user->name = $request->name;
+                $user->password = Hash::make($request->password);
+                $user->user_type = $request->role ?? $user->user_type ?? 'customer';
+                $user->provider_id = $request->provider_id ?: $user->provider_id;
+                $user->email_verified_at = now();
+                $user->save();
+
+                Log::info('Google profile completed during signup', ['user_id' => $user->id, 'user_type' => $user->user_type, 'role' => $request->role]);
+            } else {
+                $user = new User();
+                $user->name = $request->name;
+                $user->email = $request->email;
+                $user->password = Hash::make($request->password);
+                $user->user_name = Str::random(12);
+                $user->user_type = $request->role ?? 'customer';
+                $user->email_verified_at = now();
+                $user->provider_id = $request->provider_id;
+                $user->save();
+
+                Log::info('User created during signup', ['user_id' => $user->id, 'user_type' => $user->user_type, 'role' => $request->role]);
+            }
 
             // If user is registering as creator, create creator profile
-            if ($request->role === 'creator') {
+            if (($request->role ?? $user->user_type) === 'creator') {
                 try {
-                    $creator = Creator::create([
-                        'user_id' => $user->id,
-                        'status' => 'pending',
-                        'brand_name' => $request->name,
-                        'has_inventory' => true,
-                        'has_tech_pack' => false,
-                        'accepted_terms' => true,
-                        'accepted_collaboration_agreement' => false,
-                        'accepted_delivery_obligation' => false,
-                        'terms_accepted_at' => now(),
-                    ]);
-                    Log::info('Creator profile created during signup', ['user_id' => $user->id, 'creator_id' => $creator->id]);
+                    $creator = Creator::firstOrCreate(
+                        ['user_id' => $user->id],
+                        [
+                            'status' => 'pending',
+                            'brand_name' => $request->name,
+                            'has_inventory' => true,
+                            'has_tech_pack' => false,
+                            'accepted_terms' => true,
+                            'accepted_collaboration_agreement' => false,
+                            'accepted_delivery_obligation' => false,
+                            'terms_accepted_at' => now(),
+                        ]
+                    );
+                    Log::info('Creator profile ensured during signup', ['user_id' => $user->id, 'creator_id' => $creator->id]);
                 } catch (\Exception $e) {
                     Log::error('Failed to create creator profile during signup', ['user_id' => $user->id, 'error' => $e->getMessage()]);
                 }
             }
 
-            // Create body data only if body measurements are provided
-            if ($request->filled('gender') || $request->filled('weight') || $request->filled('height')) {
-                $bodydata = new BodyData();
-                $bodydata->user_id = $user->id;
-                $bodydata->weight = $request->weight;
-                $bodydata->height = $request->height;
-                $bodydata->bmi = $request->bmi;
-                $bodydata->age = $request->age_range;
-                $bodydata->gender = $request->gender;
-                $bodydata->shoe_size = $request->shoe_size;
-                $bodydata->shape = $request->shape;
+            // Create or update body data only if body measurements are provided
+            if ($request->filled('gender') || $request->filled('weight') || $request->filled('height') || $request->filled('age_range')) {
+                $alphanumericCode = $request->filled('alphanumeric_code') ? trim((string) $request->input('alphanumeric_code')) : null;
 
-                // Convert arrays to JSON strings before saving
-                $bodydata->shape_keys = $request->filled('shape_keys') ? json_encode($request->shape_keys) : null;
-                $bodydata->slider_values = $request->filled('slider_values') ? json_encode($request->slider_values) : null;
-
-                $bodydata->alphanumeric_code = $request->alphanumeric_code;
-
-                // Bust only if female
-                if ($request->gender === 'female' && $request->filled('bust')) {
-                    $bodydata->bust = $request->bust;
+                if (!$alphanumericCode) {
+                    $alphanumericCode = $request->filled('alphanumericCode') ? trim((string) $request->input('alphanumericCode')) : null;
                 }
 
-                $bodydata->save();
+                if (!$alphanumericCode) {
+                    $alphanumericCode = 'AUTO-' . strtoupper(Str::random(8));
+                }
+
+                $bodyData = BodyData::updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'weight' => $request->weight,
+                        'height' => $request->height,
+                        'bmi' => $request->bmi,
+                        'age' => $request->age_range,
+                        'gender' => $request->gender,
+                        'shoe_size' => $request->shoe_size,
+                        'shape' => $request->shape,
+                        'shape_keys' => $request->filled('shape_keys') ? json_encode($request->shape_keys) : null,
+                        'slider_values' => $request->filled('slider_values') ? json_encode($request->slider_values) : null,
+                        'alphanumeric_code' => $alphanumericCode,
+                        'bust' => ($request->gender === 'female' && $request->filled('bust')) ? $request->bust : null,
+                    ]
+                );
+
+                Log::info('Body data updated during signup', ['user_id' => $user->id, 'body_data_id' => $bodyData->id]);
             }
 
             // Auto-login and return token
@@ -131,10 +159,7 @@ class AuthController extends Controller
 
             // Send welcome email (best-effort)
             try {
-                Mail::send('emails.welcome', ['user' => $user], function ($message) use ($user) {
-                    $message->to($user->email)
-                            ->subject('🎉 Welcome to MirrorMe Fashion');
-                });
+                app(FashionIndependentEmailService::class)->sendWelcomeEmail($user);
             } catch (\Exception $e) {
                 Log::error('Welcome email failed: ' . $e->getMessage());
             }
@@ -526,28 +551,29 @@ public function update_body_data(Request $request)
                 }
             }
             $existingUserByProviderId->save();
-            return $this->loginSuccess($existingUserByProviderId);
-        } else {
-            $existing_or_new_user = User::firstOrNew(
-                [['email', '!=', null], 'email' => $social_user_details->email]
-            );
-
-            $existing_or_new_user->provider_id = $social_user_details->id;
-
-            if (!$existing_or_new_user->exists) {
-                if ($request->social_provider == 'apple') {
-                    $existing_or_new_user->name = $request->name ?: 'Apple User';
-                } else {
-                    $existing_or_new_user->name = $social_user_details->name;
-                }
-                $existing_or_new_user->email = $social_user_details->email;
-                $existing_or_new_user->email_verified_at = date('Y-m-d H:m:s');
-            }
-
-            $existing_or_new_user->save();
-
-            return $this->loginSuccess($existing_or_new_user);
+            return $this->loginSuccess($existingUserByProviderId, null, null, false);
         }
+
+        $existing_or_new_user = User::firstOrNew([
+            'email' => $social_user_details->email,
+        ]);
+
+        $isNewSocialUser = !$existing_or_new_user->exists;
+        $existing_or_new_user->provider_id = $social_user_details->id;
+
+        if ($isNewSocialUser) {
+            if ($request->social_provider == 'apple') {
+                $existing_or_new_user->name = $request->name ?: 'Apple User';
+            } else {
+                $existing_or_new_user->name = $social_user_details->name;
+            }
+            $existing_or_new_user->email = $social_user_details->email;
+            $existing_or_new_user->email_verified_at = date('Y-m-d H:m:s');
+        }
+
+        $existing_or_new_user->save();
+
+        return $this->loginSuccess($existing_or_new_user, null, null, $isNewSocialUser);
     }
 
     // Guest user Account Create
@@ -611,7 +637,7 @@ public function update_body_data(Request $request)
         return $this->loginSuccess($user);
     }
 
-    public function loginSuccess($user, $token = null, $tempUserId = null)
+    public function loginSuccess($user, $token = null, $tempUserId = null, $isNewSocialUser = false)
     {
         if (!$token) {
             $token = $user->createToken('API Token')->plainTextToken;
@@ -625,12 +651,17 @@ public function update_body_data(Request $request)
                 ]);
         }
 
+        $missingProfileFields = $this->getProfileMissingFields($user);
+
         return response()->json([
             'result' => true,
             'message' => translate('Successfully logged in'),
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_at' => null,
+            'is_new_user' => $isNewSocialUser,
+            'profile_complete' => empty($missingProfileFields),
+            'profile_missing_fields' => $missingProfileFields,
             'user' => [
                 'id' => $user->id,
                 'type' => $user->user_type,
@@ -642,6 +673,33 @@ public function update_body_data(Request $request)
                 'email_verified' => $user->email_verified_at != null
             ]
         ]);
+    }
+
+    protected function getProfileMissingFields($user)
+    {
+        $missingFields = [];
+
+        if (empty($user->user_type)) {
+            $missingFields[] = 'role';
+        }
+
+        $bodyData = $user->bodyData()->first();
+
+        if (!$bodyData) {
+            $missingFields[] = 'age';
+            $missingFields[] = 'gender';
+            return $missingFields;
+        }
+
+        if (empty($bodyData->age)) {
+            $missingFields[] = 'age';
+        }
+
+        if (empty($bodyData->gender)) {
+            $missingFields[] = 'gender';
+        }
+
+        return $missingFields;
     }
 
     protected function loginFailed()

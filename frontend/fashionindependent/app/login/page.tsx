@@ -20,6 +20,13 @@ export default function LoginPage() {
   const [focusedField, setFocusedField] = useState<string | null>(null)
   const { login } = useAuth()
   const router = useRouter()
+  const isDevelopment = process.env.NODE_ENV === "development"
+
+  const handleDemoFill = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail)
+    setPassword(demoPassword)
+    setError("")
+  }
 
   const handleGoogleSignIn = () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""
@@ -29,6 +36,8 @@ export default function LoginPage() {
     googleAuthUrl.searchParams.append("redirect_uri", redirectUri)
     googleAuthUrl.searchParams.append("response_type", "code")
     googleAuthUrl.searchParams.append("scope", "openid email profile")
+    // Force Google to show the account chooser so the user can pick another account
+    googleAuthUrl.searchParams.append("prompt", "select_account")
     window.location.href = googleAuthUrl.toString()
   }
 
@@ -39,7 +48,8 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
-      router.push("/dashboard/backer")
+
+      router.replace("/dashboard")
     } catch (err) {
       setError("Invalid email or password")
     } finally {
@@ -184,6 +194,30 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            {isDevelopment && (
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Development Testing</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
+                    onClick={() => handleDemoFill("creative@test.com", "password")}
+                  >
+                    Auto-fill Creative
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
+                    onClick={() => handleDemoFill("backer@test.com", "password")}
+                  >
+                    Auto-fill Backer
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Google Login */}
             <div className="mt-6">

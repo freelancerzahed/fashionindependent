@@ -5,16 +5,71 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import type { User } from "./data"
 import { BACKEND_URL, AUTH_CONFIG } from "@/config"
 
+const API_BASE = "/api"
+
 interface AuthContextType {
   user: User | null
   token: string | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, name: string, role: "backer" | "creator") => Promise<void>
+  signup: (
+    email: string,
+    password: string,
+    name: string,
+    role: "backer" | "creator",
+    options?: {
+      gender?: string
+      ageRange?: string
+      providerId?: string
+    }
+  ) => Promise<void>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const sanitizeStoredToken = (token: string | null | undefined) => {
+  if (!token) return null
+
+  const trimmedToken = token.trim()
+  if (!trimmedToken) return null
+
+  if (/^demo[-_]?token$/i.test(trimmedToken) || trimmedToken.length < 10) {
+    return null
+  }
+
+  return trimmedToken
+}
+
+const getApiErrorMessage = (data: any) => {
+  if (!data) return "Signup failed"
+  if (typeof data === "string") return data
+  if (data.message) return data.message
+  if (data.error) return data.error
+  if (data.errors && typeof data.errors === "object") {
+    const messages = Object.values(data.errors)
+      .flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+      .filter(Boolean)
+      .map((entry) => String(entry))
+    if (messages.length) return messages.join("; ")
+  }
+  return "Signup failed"
+}
+
+const normalizeUserRole = (role: string | undefined | null, fallback: string) => {
+  const rawRole = (role || fallback || "backer").toString().toLowerCase()
+  if (rawRole === "customer") return "backer"
+  if (rawRole === "seller") return "creator"
+  if (rawRole === "admin") return "admin"
+  return rawRole as "backer" | "creator" | "admin"
+}
+
+const normalizeUserRoles = (roles: any[] | undefined, fallback: string) => {
+  if (!roles || !Array.isArray(roles) || roles.length === 0) {
+    return [normalizeUserRole(undefined, fallback)]
+  }
+  return roles.map((role) => normalizeUserRole(role, fallback))
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -33,13 +88,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasToken: !!storedToken,
       })
 
-      if (storedUser && storedToken) {
+      const normalizedToken = sanitizeStoredToken(storedToken)
+
+      if (storedUser && normalizedToken) {
         const parsedUser = JSON.parse(storedUser)
         console.log("[Auth] ✓ Successfully loaded user:", parsedUser)
         setUser(parsedUser)
-        setToken(storedToken)
+        setToken(normalizedToken)
         return true
       } else {
+        if (storedToken && !normalizedToken) {
+          console.warn("[Auth] ✗ Stored token was invalid or placeholder. Clearing session.")
+          localStorage.removeItem("auth_token")
+          localStorage.removeItem("user")
+        }
         console.log("[Auth] ✗ Missing user or token in localStorage")
         setUser(null)
         setToken(null)
@@ -75,38 +137,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Also poll localStorage periodically to catch same-tab changes
-    // This is needed because storage events don't fire in the same tab
-    const pollTimer = setInterval(() => {
-      const currentUser = localStorage.getItem("user")
-      const currentToken = localStorage.getItem("auth_token")
-      
-      // If localStorage has data but our state doesn't, reload
-      if ((currentUser || currentToken) && (!token || !user)) {
-        console.log("[Auth] Detected localStorage update (same tab), loading...")
-        loadAuthFromStorage()
-      }
-    }, 100)
+    // Listen for custom in-window auth change events (e.g. after OAuth redirect)
+    const handleAuthChanged = () => {
+      console.log("[Auth] Received in-window auth change event: authChanged. Reloading...")
+      loadAuthFromStorage()
+    }
 
     window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("authChanged", handleAuthChanged)
 
     return () => {
       window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("authChanged", handleAuthChanged)
       clearTimeout(timer)
-      clearInterval(pollTimer)
     }
   }, [loadAuthFromStorage])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // Try to login with different user types
-      const userTypes = ['customer', 'creator', 'seller', 'admin']
+      // Try to login with different user types,
+      // including backer because signup creates backers as a separate user_type.
+      const userTypes = ['customer', 'creator', 'backer', 'seller', 'admin']
       let response = null
       let lastError = null
       
       for (const userType of userTypes) {
-        const url = `${BACKEND_URL}${AUTH_CONFIG.loginEndpoint}`
+        const url = `${API_BASE}/auth/login`
         console.log(`[Auth] Attempting login as ${userType}:`, { email, url })
         
         response = await fetch(url, {
@@ -137,19 +194,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (response.ok && data.user) {
           // Success! Found the user
+          const rawRole = data.user?.role || data.user?.type || data.data?.role || data.data?.type || userType
+          const normalizedRole = normalizeUserRole(rawRole, userType)
+
+          const normalizedRoles = normalizeUserRoles(
+            data.roles || data.user?.roles || data.data?.roles || [normalizedRole],
+            normalizedRole
+          )
+
           const mockUser: User = {
             id: data.user?.id || data.data?.id || Math.random().toString(),
             email: data.user?.email || data.data?.email || email,
             name: data.user?.name || data.data?.name || email.split("@")[0],
-            role: (data.user?.role || data.data?.role || userType) as "backer" | "creator",
-            roles: data.roles || data.user?.roles || data.data?.roles || [userType],
+            role: normalizedRole as "backer" | "creator",
+            roles: normalizedRoles,
             avatar: data.user?.avatar || data.data?.avatar,
             createdAt: new Date(),
           }
 
           console.log("[Auth] User logged in:", mockUser)
           setUser(mockUser)
-          const authToken = data.token || data.access_token || data.data?.token || ""
+          const authToken = sanitizeStoredToken(data.token || data.access_token || data.data?.token || "")
+
+          if (!authToken) {
+            throw new Error("Authentication token was not returned by the backend")
+          }
+
           setToken(authToken)
           localStorage.setItem("user", JSON.stringify(mockUser))
           localStorage.setItem("auth_token", authToken)
@@ -170,26 +240,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signup = async (email: string, password: string, name: string, role: "backer" | "creator") => {
+  const signup = async (
+    email: string,
+    password: string,
+    name: string,
+    role: "backer" | "creator",
+    options?: {
+      gender?: string
+      ageRange?: string
+      providerId?: string
+    }
+  ) => {
     setIsLoading(true)
     try {
-      // Use different endpoints based on role
       const isCreator = role === "creator"
-      const endpoint = isCreator ? AUTH_CONFIG.creatorSignupEndpoint : AUTH_CONFIG.signupEndpoint
-      const url = `${BACKEND_URL}${endpoint}`
-      
-      console.log("[Auth] Signing up with:", { email, name, role, url })
-      
+      const endpoint = "/auth/signup"
+      const url = `${API_BASE}${endpoint}`
+
+      console.log("[Auth] Signing up with:", { email, name, role, url, providerId: options?.providerId })
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          name, 
+        body: JSON.stringify({
+          email,
+          // If providerId exists, still send the password the user typed (if any).
+          // Previously we always sent empty password when providerId was present which
+          // caused server-side "password required" errors even when the user typed one.
+          password: options?.providerId && (!password || password.trim().length === 0) ? "" : password,
+          name,
           role,
+          gender: options?.gender || null,
+          age_range: options?.ageRange || null,
+          provider_id: options?.providerId || null,
+          alphanumeric_code: `FI-${Date.now().toString(36).toUpperCase()}`,
           ...(isCreator && {
             has_inventory: true,
             has_tech_pack: false,
@@ -213,22 +299,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[Auth] Signup response:", { status: response.status, data })
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || "Signup failed")
+        throw new Error(getApiErrorMessage(data) || `Signup failed: ${response.status}`)
       }
+
+      const rawRole = data.user?.role || data.user?.type || data.data?.role || data.data?.type || role
+      const normalizedRole = normalizeUserRole(rawRole, role)
+      const normalizedRoles = normalizeUserRoles(data.roles || data.user?.roles || data.data?.roles || [normalizedRole], normalizedRole)
 
       const newUser: User = {
         id: data.user?.id || data.data?.id || data.creator?.user_id || Math.random().toString(),
         email: data.user?.email || data.data?.email || email,
         name: data.user?.name || data.data?.name || name,
-        role: (data.user?.role || data.data?.role || role) as "backer" | "creator",
-        roles: data.roles || data.user?.roles || data.data?.roles || [role],
+        role: normalizedRole as "backer" | "creator",
+        roles: normalizedRoles,
         avatar: data.user?.avatar || data.data?.avatar,
         createdAt: new Date(),
       }
 
       console.log("[Auth] User signed up:", newUser)
       setUser(newUser)
-      const authToken = data.token || data.access_token || data.data?.token || ""
+      const authToken = sanitizeStoredToken(data.token || data.access_token || data.data?.token || "")
+
+      if (!authToken) {
+        throw new Error("Authentication token was not returned by the backend")
+      }
+
       setToken(authToken)
       localStorage.setItem("user", JSON.stringify(newUser))
       localStorage.setItem("auth_token", authToken)

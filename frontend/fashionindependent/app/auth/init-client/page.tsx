@@ -64,6 +64,13 @@ export default function AuthInitPage() {
     console.log("[Init-Client] Storing in localStorage...");
     localStorage.setItem("auth_token", token);
     localStorage.setItem("user", JSON.stringify(user));
+    // Notify the running app that auth data changed in this window
+    try {
+      window.dispatchEvent(new Event("authChanged"))
+      console.log('[Init-Client] Dispatched authChanged event')
+    } catch (e) {
+      console.warn('[Init-Client] Failed to dispatch authChanged event', e)
+    }
     console.log("[Init-Client] ✓ Auth data stored in localStorage");
 
     // Verify data was actually saved before redirecting
@@ -73,8 +80,23 @@ export default function AuthInitPage() {
 
       if (savedToken && savedUser) {
         console.log("[Init-Client] ✓ Verified: Auth data confirmed in localStorage");
-        console.log("[Init-Client] Redirecting to /dashboard/backer");
-        router.push("/dashboard/backer");
+
+        // Determine redirect based on normalized role (support backend using `type` or `role`)
+        let parsedUserObj = null
+        try {
+          parsedUserObj = JSON.parse(savedUser)
+        } catch (e) {
+          console.error("[Init-Client] Failed to parse saved user for redirect determination:", e)
+        }
+
+        const resolvedRole = parsedUserObj?.role || (parsedUserObj?.type === 'customer' ? 'backer' : parsedUserObj?.type) || ''
+        const hasCreatorRole = resolvedRole === 'creator' || (Array.isArray(parsedUserObj?.roles) && parsedUserObj.roles.includes('creator'))
+        const hasBackerRole = resolvedRole === 'backer' || (Array.isArray(parsedUserObj?.roles) && parsedUserObj.roles.includes('backer'))
+
+        const redirectPath = hasCreatorRole ? '/dashboard' : hasBackerRole ? '/dashboard/backer' : '/dashboard'
+
+        console.log('[Init-Client] Redirecting to', redirectPath)
+        router.replace(redirectPath)
       } else {
         console.error("[Init-Client] ✗ Verification failed: Auth data not in localStorage!");
         console.error("[Init-Client] Token saved:", !!savedToken);
@@ -82,7 +104,7 @@ export default function AuthInitPage() {
         // Retry with longer delay
         setTimeout(() => {
           console.log("[Init-Client] Retrying redirect...");
-          router.push("/dashboard/backer");
+          router.push("/dashboard");
         }, 200);
       }
     }, 50);

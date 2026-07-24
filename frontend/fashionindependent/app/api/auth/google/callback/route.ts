@@ -104,14 +104,35 @@ export async function GET(req: NextRequest) {
       role: authData.user.type === 'customer' ? 'backer' : (authData.user.type || 'backer')
     } : null;
 
+    const isNewSocialUser = authData.is_new_user === true;
+    const needsProfileCompletion = isNewSocialUser && (authData.profile_complete === false || !authData.user?.type || !String(authData.user.type).trim());
+
     // Debug logging
     console.log("[OAuth Callback] Backend response:", {
       hasAccessToken: !!authData.access_token,
       hasUser: !!authData.user,
       userType: authData.user?.type,
       userEmail: authData.user?.email,
+      isNewSocialUser,
+      profileComplete: authData.profile_complete,
+      profileMissingFields: authData.profile_missing_fields,
+      needsProfileCompletion,
     });
     console.log("[OAuth Callback] Mapped user:", userData);
+
+    if (needsProfileCompletion) {
+      const signupUrl = new URL("/signup", req.url);
+      signupUrl.search = new URLSearchParams({
+        role: "creator",
+        google: "1",
+        name: googleUser.name || "",
+        email: googleUser.email || "",
+        avatar: googleUser.picture || "",
+        provider_id: googleUser.sub || "",
+      }).toString();
+
+      return NextResponse.redirect(signupUrl);
+    }
 
     // Encode auth data in URL for more reliable transfer
     const authParams = new URLSearchParams({
