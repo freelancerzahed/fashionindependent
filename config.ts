@@ -1,7 +1,7 @@
 // Backend API URL - Points to Laravel API routes
-// Local development: http://localhost/mirrormefashion/api/v2
+// Local development: https://slategrey-mole-901578.hostingersite.com/api/v2
 
-export const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost/mirrormefashion/api/v2";
+export const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "https://slategrey-mole-901578.hostingersite.com/api/v2";
 
 // Auth config - Using v2/auth routes
 export const AUTH_CONFIG = {
@@ -21,7 +21,7 @@ export const GOOGLE_OAUTH_CONFIG = {
 }
 
 // Campaign config - Using /campaign (not /v2/campaign) to avoid duplicate /v2
-// The final URL will be http://localhost/mirrormefashion/api/v2/campaign
+// The final URL will be https://slategrey-mole-901578.hostingersite.com/api/v2/campaign
 export const CAMPAIGN_CONFIG = {
   createEndpoint: "/campaign",  // Changed from "/v2/campaign" to "/campaign" to avoid duplicate v2
   listEndpoint: "/campaign",
