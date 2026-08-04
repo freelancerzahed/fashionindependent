@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { Upload, X, AlertCircle, CheckCircle } from "lucide-react"
-import { BACKEND_URL } from "@/config"
+// Use proxy endpoint to avoid CORS: /api/auth/profile/image/upload
 
 interface ProfilePictureUploadProps {
   onSuccess?: () => void
@@ -73,7 +73,7 @@ export function ProfilePictureUpload({ onSuccess }: ProfilePictureUploadProps = 
         setUploadProgress((prev) => Math.min(prev + 15, 90))
       }, 200)
 
-      const uploadUrl = `${BACKEND_URL}/auth/profile/image/upload`
+      const uploadUrl = `/api/auth/profile/image/upload`
       console.log("[ProfilePictureUpload] ===== UPLOAD REQUEST =====")
       console.log("[ProfilePictureUpload] URL:", uploadUrl)
       console.log("[ProfilePictureUpload] Method: POST")
@@ -213,7 +213,7 @@ export function ProfilePictureUpload({ onSuccess }: ProfilePictureUploadProps = 
       console.log("[ProfilePictureUpload] Suggested fix: " + helpMessage)
       console.log("[ProfilePictureUpload] Stack trace: " + errorStack)
       console.log("[ProfilePictureUpload] === DIAGNOSTICS ===")
-      console.log("[ProfilePictureUpload] Backend URL: " + BACKEND_URL)
+      console.log("[ProfilePictureUpload] Backend URL: (proxy) /api/auth/profile/image/upload")
       console.log("[ProfilePictureUpload] Token: " + (token ? "✓ Present (" + token.length + " chars)" : "✗ Missing"))
       console.log("[ProfilePictureUpload] File: " + (selectedFile ? "✓ " + selectedFile.name + " (" + selectedFile.size + " bytes)" : "✗ Missing"))
       console.log("[ProfilePictureUpload] === NEXT STEPS ===")

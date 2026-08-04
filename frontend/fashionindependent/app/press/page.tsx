@@ -34,15 +34,10 @@ export default function PressPage() {
         setLoading(true)
         setError(null)
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        if (!apiUrl) {
-          throw new Error("API URL not configured")
-        }
-
-        console.log("📡 Fetching news from CMS at:", `${apiUrl}/news-list`)
+        console.log("📡 Fetching news from CMS at:", "/api/blog/list")
 
         // Fetch news from CMS blogs with type='news'
-        const newsResponse = await fetch(`${apiUrl}/news-list?per_page=10&t=${Date.now()}`, {
+        const newsResponse = await fetch(`/api/blog/list?page=1&per_page=10&t=${Date.now()}`, {
           method: "GET",
           headers: {
             "Accept": "application/json",
@@ -56,27 +51,32 @@ export default function PressPage() {
 
         const newsData = await newsResponse.json()
         console.log('📥 News API Response:', newsData)
-        
-        if (newsData.result && Array.isArray(newsData.data)) {
-          // Transform blog data to match PressRelease interface
-          const transformedNews = newsData.data.map((item: any) => ({
+
+        const blogItems = Array.isArray(newsData?.blogs?.data)
+          ? newsData.blogs.data
+          : Array.isArray(newsData?.recent_blogs)
+            ? newsData.recent_blogs
+            : []
+
+        if (blogItems.length > 0) {
+          const transformedNews = blogItems.map((item: any) => ({
             id: item.id,
             title: item.title,
-            excerpt: item.short_description || item.description,
+            excerpt: item.short_description || item.description || item.excerpt || '',
             slug: item.slug,
             published_date: item.created_at,
           }))
+
           console.log('🔄 Transformed news:', transformedNews)
           setPressReleases(transformedNews)
           console.log(`✓ Loaded ${transformedNews.length} news items from CMS`)
         } else {
           console.warn('⚠️ Unexpected API response format:', newsData)
-          setError(`API returned unexpected format. Status: ${newsData.result}, Has data: ${Array.isArray(newsData.data)}`)
+          setPressReleases([])
         }
 
-        // Fetch media kit
-        console.log("📡 Fetching media kit from:", `${apiUrl}/press-media-kit`)
-        const mediaResponse = await fetch(`${apiUrl}/press-media-kit?t=${Date.now()}`, {
+        // Fetch media kit from the backend through a local proxy route if available
+        const mediaResponse = await fetch(`/api/press/media-kit?t=${Date.now()}`, {
           method: "GET",
           headers: {
             "Accept": "application/json",
@@ -149,14 +149,13 @@ export default function PressPage() {
                 {pressReleases.map((release) => (
                   <Card key={release.id} className="p-6">
                     <p className="text-sm text-muted-foreground mb-2">
-                      {release.published_date || release.date ? 
-                        new Date(release.published_date || release.date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })
-                        : 'Unknown date'
-                      }
+                      {release.published_date || release.date
+                        ? new Date(release.published_date || release.date || new Date().toISOString()).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                        : 'Unknown date'}
                     </p>
                     <h3 className="text-xl font-semibold mb-3">{release.title}</h3>
                     <p className="text-muted-foreground mb-4">{release.excerpt}</p>

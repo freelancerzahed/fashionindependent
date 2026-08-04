@@ -45,14 +45,9 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
         setLoading(true)
         setError(null)
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        if (!apiUrl) {
-          throw new Error("API URL not configured")
-        }
+        console.log("📡 Fetching blog post from internal proxy:", `/api/blog/details/${slug}`)
 
-        console.log("📡 Fetching blog post from:", `${apiUrl}/blog-details/${slug}`)
-
-        const response = await fetch(`${apiUrl}/blog-details/${slug}`, {
+        const response = await fetch(`/api/blog/details/${slug}`, {
           method: "GET",
           headers: {
             "Accept": "application/json",
@@ -358,15 +353,18 @@ export default function BlogDetailClient({ slug }: { slug: string }) {
                 overflow-x: auto;
               }
             `}</style>
-            {(post.content || post.description) && (post.content || post.description).includes("<") ? (
-              <div dangerouslySetInnerHTML={{ __html: post.content || post.description }} />
-            ) : (
-              <div className="space-y-4 text-slate-700 leading-relaxed">
-                {(post.content || post.description)?.split("\n\n").map((paragraph, idx) => (
-                  <p key={idx}>{paragraph}</p>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const content = post.content || post.description || ""
+              return content.includes("<") ? (
+                <div dangerouslySetInnerHTML={{ __html: content }} />
+              ) : (
+                <div className="space-y-4 text-slate-700 leading-relaxed">
+                  {content.split("\n\n").map((paragraph, idx) => (
+                    <p key={idx}>{paragraph}</p>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Divider */}

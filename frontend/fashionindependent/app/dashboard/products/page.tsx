@@ -15,7 +15,6 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react"
-import { BACKEND_URL } from "@/config"
 
 interface Campaign {
   id: string | number
@@ -62,7 +61,7 @@ export default function ProductsPage() {
 
     try {
       // Parallel fetch for campaigns
-      const campaignsRes = await fetch(`${BACKEND_URL}/campaign`, {
+      const campaignsRes = await fetch(`/api/campaign`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -151,10 +150,10 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-3 pb-20 px-1 sm:space-y-4 sm:pb-0 sm:px-0">
       {/* Stats Section */}
       <section>
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
@@ -190,11 +189,15 @@ export default function ProductsPage() {
 
       {/* Current Activity Section */}
       <section>
-        <h1 className="ml-[2%] text-2xl font-bold mb-4">Current Activity</h1>
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
           {/* Active Campaigns Section */}
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold">Active Campaign</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-neutral-900">Active Campaign</h2>
+              <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-600">
+                Live
+              </span>
+            </div>
 
             {isLoading ? (
               <Card className="p-12 flex items-center justify-center">
@@ -202,59 +205,46 @@ export default function ProductsPage() {
                 <span>Loading campaign...</span>
               </Card>
             ) : activeCampaign ? (
-              <Card className="p-8">
-                <div className="space-y-8">
+              <Card className="border-0 bg-neutral-50 p-3 shadow-none sm:p-4">
+                <div className="space-y-3">
                   {/* Quick Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-700 font-semibold mb-1">
-                        Funding Goal
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">
+                        Goal
                       </p>
-                      <p className="text-2xl font-bold text-blue-900 mb-2">
+                      <p className="mt-1 text-lg font-bold text-blue-900">
                         ${activeCampaign.funding_goal?.toLocaleString() || "0"}
-                      </p>
-                      <p className="text-xs text-blue-600">
-                        Campaign target
                       </p>
                     </div>
 
-                    <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Clock className="w-4 h-4 text-orange-600" />
-                        <p className="text-sm text-orange-700 font-semibold">
+                    <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-orange-600" />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-700">
                           Backers
                         </p>
                       </div>
-                      <p className="text-3xl font-bold text-orange-600">
+                      <p className="mt-1 text-lg font-bold text-orange-600">
                         {activeCampaign.backers_count || 0}
-                      </p>
-                      <p className="text-xs text-orange-600">
-                        Campaign backers
                       </p>
                     </div>
 
-                    <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-700 font-semibold mb-1">
+                    <div className="rounded-xl border border-green-200 bg-green-50 p-3 sm:col-span-1 col-span-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-green-700">
                         Status
                       </p>
-                      <p className="text-2xl font-bold text-green-900 mb-2 capitalize">
+                      <p className="mt-1 text-base font-bold capitalize text-green-900">
                         {activeCampaign.status}
-                      </p>
-                      <p className="text-xs text-green-600">
-                        {new Date(
-                          activeCampaign.created_at
-                        ).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
 
                   {/* Campaign Details */}
-                  <div className="space-y-4">
-                    <div>
-                      <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-                        {activeCampaign.title}
-                      </h1>
-                    </div>
+                  <div className="space-y-2">
+                    <h1 className="text-lg font-semibold text-neutral-900">
+                      {activeCampaign.title}
+                    </h1>
 
                     <div className="space-y-2">
                       <Button
@@ -264,7 +254,7 @@ export default function ProductsPage() {
                         }}
                         className="w-full"
                       >
-                        <Edit2 className="w-4 h-4 mr-2" />
+                        <Edit2 className="mr-2 h-4 w-4" />
                         Edit Campaign
                       </Button>
 
@@ -272,7 +262,7 @@ export default function ProductsPage() {
                         activeCampaign.status === "active") && (
                         <Link href={`/campaign/${activeCampaign.id}`}>
                           <Button variant="outline" className="w-full">
-                            👁️ View Live Campaign
+                            View Live Campaign
                           </Button>
                         </Link>
                       )}
@@ -304,12 +294,15 @@ export default function ProductsPage() {
 
       {/* Products Grid Section */}
       <section>
-        <h1 className="ml-[2%] text-2xl font-bold mb-4">
-          Products & Collections
-        </h1>
+        <div className="mb-2 flex items-center justify-between px-1">
+          <h1 className="text-lg font-semibold text-neutral-900">
+            Products & Collections
+          </h1>
+          <span className="text-sm text-neutral-500">{campaigns.length} items</span>
+        </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-bold py-2 mb-4">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm sm:p-4">
+          <h2 className="mb-3 text-base font-semibold text-neutral-900">
             Products ({campaigns.length})
           </h2>
 
@@ -323,13 +316,13 @@ export default function ProductsPage() {
           ) : (
             <>
               {/* Products Grid with Pagination */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 mb-4">
                 {paginatedCampaigns.map((campaign) => (
                   <Card
                     key={campaign.id}
-                    className="overflow-hidden group hover:shadow-lg transition-shadow"
+                    className="overflow-hidden group border-neutral-200 transition-shadow hover:shadow-md"
                   >
-                    <div className="aspect-[3/4] bg-neutral-200 relative overflow-hidden">
+                    <div className="aspect-[4/3] bg-neutral-200 relative overflow-hidden sm:aspect-[3/4]">
                       {campaign.product_images &&
                       campaign.product_images[0]?.path ? (
                         <img
@@ -350,11 +343,11 @@ export default function ProductsPage() {
                         </div>
                       )}
                     </div>
-                    <CardContent className="p-4">
-                      <p className="text-sm font-medium text-neutral-900 line-clamp-2 mb-2">
+                    <CardContent className="p-3 sm:p-4">
+                      <p className="mb-2 line-clamp-2 text-sm font-medium text-neutral-900">
                         {campaign.title}
                       </p>
-                      <div className="flex justify-between items-center text-xs text-neutral-600">
+                      <div className="flex items-center justify-between text-xs text-neutral-600">
                         <span>
                           ${campaign.funded_amount?.toLocaleString() || 0}
                         </span>
@@ -369,7 +362,7 @@ export default function ProductsPage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between py-4 border-t">
+                <div className="flex items-center justify-between border-t border-neutral-200 py-3">
                   <Button
                     variant="outline"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ChevronDown, ChevronUp, Check, X } from "lucide-react"
+import { BACKEND_URL } from "@/config"
 
 interface DiagnosticResult {
   name: string
@@ -23,14 +24,13 @@ export function AnalyticsDiagnostics() {
     const testResults: DiagnosticResult[] = []
 
     // Check 1: API URL configured
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
     testResults.push({
       name: "API URL Configured",
-      status: apiUrl ? "pass" : "fail",
-      message: apiUrl ? `API URL: ${apiUrl}` : "NEXT_PUBLIC_API_URL not configured",
+      status: BACKEND_URL ? "pass" : "fail",
+      message: BACKEND_URL ? `API URL: ${BACKEND_URL}` : "NEXT_PUBLIC_API_URL not configured",
     })
 
-    if (!apiUrl) {
+    if (!BACKEND_URL) {
       setResults(testResults)
       setRunning(false)
       return
@@ -38,7 +38,7 @@ export function AnalyticsDiagnostics() {
 
     // Check 2: API Health
     try {
-      const healthRes = await fetch(`${apiUrl}/analytics/health`)
+      const healthRes = await fetch(`${BACKEND_URL}/analytics/health`)
       if (healthRes.ok) {
         const healthData = await healthRes.json()
         testResults.push({
@@ -74,7 +74,7 @@ export function AnalyticsDiagnostics() {
     // Check 4: Test Analytics Endpoint
     if (token) {
       try {
-        const analyticsRes = await fetch(`${apiUrl}/analytics/creator`, {
+        const analyticsRes = await fetch(`${BACKEND_URL}/analytics/creator`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -195,7 +195,7 @@ export function AnalyticsDiagnostics() {
             <ul className="list-disc list-inside space-y-0.5">
               <li>Check .env.local for NEXT_PUBLIC_API_URL</li>
               <li>Ensure backend API is running</li>
-              <li>Verify you are logged in with a creator account</li>
+              <li>Verify you are logged in with a creative account</li>
               <li>Check your token hasn't expired</li>
             </ul>
           </div>

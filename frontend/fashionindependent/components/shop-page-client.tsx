@@ -3,11 +3,11 @@
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
-import { useState, useCallback, useMemo } from "react"
+import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MobileTabs } from "@/components/mobile-tabs"
-// Product type definition moved to component
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { getCampaignPrice } from "@/lib/campaign-pricing"
 
 interface Pagination {
   page: number
@@ -31,6 +31,18 @@ interface Product {
   rating: number
   sales: number
   description: string
+  isCampaign?: boolean
+  availabilityLabel?: string
+  statusLabel?: string
+  href?: string
+  detailsHref?: string
+  ctaLabel?: string
+}
+
+interface CategoryOption {
+  id: string
+  label: string
+  value: string
 }
 
 interface ShopPageClientProps {
@@ -51,13 +63,16 @@ export function ShopPageClient({
   initialSortOrder,
 }: ShopPageClientProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   
-  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [products, setProducts] = useState<Product[]>(initialProducts.filter((product) => product.ctaLabel === 'Buy Now'))
+  const [categories, setCategories] = useState<CategoryOption[]>([])
   const [searchTerm, setSearchTerm] = useState(initialSearch)
   const [category, setCategory] = useState(initialCategory)
   const [sortBy, setSortBy] = useState(initialSortBy)
   const [sortOrder, setSortOrder] = useState(initialSortOrder)
+  const [priceRange, setPriceRange] = useState("all")
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(pagination?.page || 1)
   const [isLoading, setIsLoading] = useState(false)
   const [currentPagination, setCurrentPagination] = useState(pagination || {
@@ -67,27 +82,97 @@ export function ShopPageClient({
     total_pages: 0,
     has_more: false,
   })
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  const perPage = 12
 
   const filterTabs = [
-    { id: "total_sold", label: "Most Popular" },
-    { id: "color", label: "Color" },
-    { id: "sizes", label: "Sizes" },
-    { id: "price", label: "Price" },
-    { id: "category_main", label: "Category" },
-    { id: "days_remaining", label: "Days Remaining" },
-    { id: "closed", label: "Closed" },
+    { id: "created_at", label: "Newest" },
+    { id: "funding", label: "Trending" },
+    { id: "ending-soon", label: "Closing Soon" },
+    { id: "trending", label: "Most Viewed" },
+  ]
+
+  const priceFilterOptions = [
+    { id: "all", label: "Any price" },
+    { id: "under-100", label: "Under $100" },
+    { id: "100-250", label: "$100 - $250" },
+    { id: "250-plus", label: "$250+" },
   ]
 
   const [activeFilter, setActiveFilter] = useState(initialSortBy)
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await fetch("/api/categories/menu", {
+          headers: { Accept: "application/json" },
+        })
+
+        if (!response.ok) return
+
+        const data = await response.json()
+        const options = (data.categories || []).flatMap((item: any) => {
+          const root = item.href ? item.href.split("/category/").pop() : ""
+          const rootOption = item.name
+            ? { id: `${item.id || item.name}-root`, label: item.name, value: root || "" }
+            : null
+
+          const children = (item.subcategories || []).map((sub: any) => ({
+            id: `${sub.id || sub.name}-child`,
+            label: sub.name,
+            value: sub.href ? sub.href.split("/category/").pop() : "",
+          }))
+
+          return [rootOption, ...children].filter(Boolean) as CategoryOption[]
+        })
+
+        const uniqueOptions = options.filter(
+          (option: CategoryOption, index: number, arr: CategoryOption[]) => arr.findIndex((item: CategoryOption) => item.value === option.value) === index
+        )
+
+        setCategories([{ id: "all", label: "All", value: "" }, ...uniqueOptions])
+      } catch (error) {
+        console.error("Error loading categories for shop", error)
+      }
+    }
+
+    loadCategories()
+  }, [])
+
+  const toggleFilters = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsMobileFiltersOpen((value) => !value)
+      return
+    }
+
+    setShowAdvancedFilters((value) => !value)
+  }
+
+  const updateUrl = useCallback(
+    (search: string, cat: string, sort: string, order: string, page: number, currentPriceRange = priceRange) => {
+      const params = new URLSearchParams()
+
+      if (search) params.append('search', search)
+      if (cat) params.append('category', cat)
+      if (sort && sort !== 'created_at') params.append('sort_by', sort)
+      if (order && order !== 'desc') params.append('sort_order', order)
+      if (currentPriceRange && currentPriceRange !== 'all') params.append('price_range', currentPriceRange)
+      if (page > 1) params.append('page', page.toString())
+
+      router.push(`/shop?${params.toString()}`)
+    },
+    [priceRange, router]
+  )
 
   // Handle search with debounce
   const handleSearch = useCallback(
     (value: string) => {
       setSearchTerm(value)
       setCurrentPage(1)
-      updateUrl(value, category, sortBy, sortOrder, 1)
+      updateUrl(value, category, sortBy, sortOrder, 1, priceRange)
     },
-    [category, sortBy, sortOrder]
+    [category, sortBy, sortOrder, priceRange, updateUrl]
   )
 
   // Handle filter change
@@ -95,41 +180,75 @@ export function ShopPageClient({
     setActiveFilter(filterId)
     setSortBy(filterId)
     setCurrentPage(1)
-    updateUrl(searchTerm, category, filterId, sortOrder, 1)
+    updateUrl(searchTerm, category, filterId, sortOrder, 1, priceRange)
   }
 
-  // Update URL with current filters
-  const updateUrl = useCallback(
-    (search: string, cat: string, sort: string, order: string, page: number) => {
-      const params = new URLSearchParams()
-      
-      if (search) params.append('search', search)
-      if (cat) params.append('category', cat)
-      if (sort && sort !== 'created_at') params.append('sort_by', sort)
-      if (order && order !== 'desc') params.append('sort_order', order)
-      if (page > 1) params.append('page', page.toString())
+  const handleCategoryChange = (value: string) => {
+    setCategory(value)
+    setCurrentPage(1)
+    updateUrl(searchTerm, value, sortBy, sortOrder, 1, priceRange)
+  }
 
-      router.push(`/shop?${params.toString()}`)
-    },
-    [router]
-  )
+  const handlePriceChange = (value: string) => {
+    setPriceRange(value)
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, sortBy, sortOrder, 1, value)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setCategory("")
+    setSortBy("created_at")
+    setSortOrder("desc")
+    setPriceRange("all")
+    setActiveFilter("created_at")
+    setCurrentPage(1)
+    router.push("/shop")
+  }
+
+  const handleClearFilters = () => {
+    clearFilters()
+    setShowAdvancedFilters(false)
+    setIsMobileFiltersOpen(false)
+  }
+
+  const removeSearchFilter = () => {
+    setSearchTerm("")
+    setCurrentPage(1)
+    updateUrl("", category, sortBy, sortOrder, 1, priceRange)
+  }
+
+  const removeCategoryFilter = () => {
+    setCategory("")
+    setCurrentPage(1)
+    updateUrl(searchTerm, "", sortBy, sortOrder, 1, priceRange)
+  }
+
+  const removePriceFilter = () => {
+    setPriceRange("all")
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, sortBy, sortOrder, 1, "all")
+  }
+
+  const removeSortFilter = () => {
+    setActiveFilter("created_at")
+    setSortBy("created_at")
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, "created_at", sortOrder, 1, priceRange)
+  }
 
   // Fetch products when filters change
   const fetchProducts = useCallback(
-    async (search: string, cat: string, sort: string, order: string, page: number) => {
+    async (search: string, cat: string, sort: string, order: string, page: number, append = false) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams()
         
         if (search) params.append('search', search)
         params.append('page', page.toString())
-        params.append('per_page', '12')
+        params.append('per_page', perPage.toString())
 
-        let url = `${process.env.NEXT_PUBLIC_API_URL}/products`
-        if (cat) {
-          url += `/category/${cat}`
-        }
-        url += `?${params.toString()}`
+        const url = `/api/campaigns/active?${params.toString()}`
 
         console.log('[ShopPageClient] Fetching from:', url)
 
@@ -144,130 +263,343 @@ export function ShopPageClient({
         const data = await response.json()
         console.log('[ShopPageClient] Response received:', data)
 
-        // Transform API response from ProductMiniCollection
-        const transformed = (data.data || []).map((product: any) => ({
-          id: product.id,
-          slug: product.slug,
-          name: product.name,
-          title: product.name,
-          thumbnail_image: product.thumbnail_image || '/placeholder.svg',
-          image: product.thumbnail_image || '/placeholder.svg',
-          stroked_price: parseFloat(product.stroked_price || 0),
-          main_price: parseFloat(product.main_price || 0),
-          price: parseFloat(product.main_price || 0),
-          discount: product.discount || '0%',
-          rating: product.rating || 0,
-          sales: product.sales || 0,
-          description: product.description || '',
-        }))
+        const campaigns = Array.isArray(data.data) ? data.data : []
 
-        setProducts(transformed)
-        
-        // Handle Laravel pagination meta
-        let paginationData = { page, per_page: 12, total: 0, total_pages: 0, has_more: false }
-        if (data.meta) {
-          paginationData = {
-            page: data.meta.current_page || page,
-            per_page: data.meta.per_page || 12,
-            total: data.meta.total || 0,
-            total_pages: data.meta.last_page || 0,
-            has_more: (data.meta.current_page || page) < (data.meta.last_page || 0),
+        const fundedCampaigns = campaigns.filter((campaign: any) => campaign.is_funded)
+
+        const transformed = fundedCampaigns.map((campaign: any) => {
+          const campaignPrice = getCampaignPrice(campaign)
+          return {
+            id: campaign.id,
+            slug: String(campaign.id),
+            name: campaign.product_name || campaign.title,
+            title: campaign.title,
+            thumbnail_image: campaign.product_images?.[0]?.path || '/placeholder.svg',
+            image: campaign.product_images?.[0]?.path || '/placeholder.svg',
+            stroked_price: 0,
+            main_price: campaignPrice,
+            price: campaignPrice,
+            discount: 'Limited Drop',
+            rating: Number(campaign.upvote_percentage || 0),
+            sales: Number(campaign.backer_count || 0),
+            description: campaign.description || '',
+            isCampaign: true,
+            availabilityLabel: 'Now Available',
+            statusLabel: 'This campaign has reached its goal and this limited drop is ready for purchase.',
+            href: `/checkout?campaignId=${campaign.id}&pledgeOptionId=buy-now&quantity=1`,
+            detailsHref: `/campaign/${campaign.id}`,
+            ctaLabel: 'Buy Now',
           }
-        }
-        
-        setCurrentPagination(paginationData)
-        setCurrentPage(paginationData.page)
+        })
+
+        const hasMoreFromApi = Boolean(data.pagination?.has_more) || Boolean(data.meta && (data.meta.current_page || page) < (data.meta.last_page || 0))
+        const hasMore = hasMoreFromApi && transformed.length >= perPage
+
+        setProducts((prev) => {
+          const nextProducts = append ? [...prev, ...transformed] : transformed
+          const totalLoaded = nextProducts.length
+
+          let paginationData = { page, per_page: perPage, total: totalLoaded, total_pages: 1, has_more: hasMore }
+          if (data.pagination) {
+            paginationData = {
+              page: data.pagination.page || page,
+              per_page: data.pagination.per_page || perPage,
+              total: totalLoaded,
+              total_pages: data.pagination.total_pages || 1,
+              has_more: hasMore,
+            }
+          } else if (data.meta) {
+            paginationData = {
+              page: data.meta.current_page || page,
+              per_page: data.meta.per_page || perPage,
+              total: totalLoaded,
+              total_pages: data.meta.last_page || 1,
+              has_more: hasMore,
+            }
+          }
+
+          setCurrentPagination(paginationData)
+          setCurrentPage(paginationData.page)
+          return nextProducts
+        })
       } catch (error) {
         console.error('Error fetching products:', error)
       } finally {
         setIsLoading(false)
       }
     },
-    []
+    [perPage]
   )
 
-  // Handle pagination
-  const handlePageChange = useCallback(
-    (newPage: number) => {
-      fetchProducts(searchTerm, category, sortBy, sortOrder, newPage)
-      updateUrl(searchTerm, category, sortBy, sortOrder, newPage)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    },
-    [fetchProducts, updateUrl, searchTerm, category, sortBy, sortOrder]
-  )
+  const handleLoadMore = useCallback(() => {
+    if (isLoading || !currentPagination.has_more) return
+    const nextPage = currentPage + 1
+    fetchProducts(searchTerm, category, sortBy, sortOrder, nextPage, true)
+    updateUrl(searchTerm, category, sortBy, sortOrder, nextPage)
+  }, [currentPage, currentPagination.has_more, fetchProducts, isLoading, searchTerm, category, sortBy, sortOrder, updateUrl])
 
-  // Pagination buttons
-  const paginationPages = useMemo(() => {
-    const pages = []
-    const totalPages = currentPagination.total_pages
-    const currentPageNum = currentPagination.page
-    
-    // Always show first page
-    pages.push(1)
-    
-    // Show context around current page
-    if (currentPageNum > 3) pages.push('...')
-    
-    for (let i = Math.max(2, currentPageNum - 1); i <= Math.min(totalPages - 1, currentPageNum + 1); i++) {
-      if (i > 1) pages.push(i)
-    }
-    
-    // Always show last page
-    if (totalPages > 1) pages.push(totalPages)
-    
-    return pages
-  }, [currentPagination])
+  useEffect(() => {
+    if (!sentinelRef.current || !currentPagination.has_more || isLoading || products.length < currentPagination.per_page) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          handleLoadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [currentPagination.has_more, handleLoadMore, isLoading])
+
+  if (isLoading && products.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900 mx-auto mb-4"></div>
+          <p className="text-neutral-600">Loading products...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-neutral-50">
       <main className="flex-1">
-        {/* Hero */}
-        <section className="py-24 bg-black">
-          <div className="container mx-auto px-4">
-            <h1 className="text-4xl text-white font-bold mb-6 text-center">Shop the Limited Drop</h1>
-
-            <div className="max-w-2xl text-white mx-auto relative text-center">
-              <p><span className="font-bold">What is a Limited Drop?</span> Each item featured in this store was voted up by our members and is 
-              available here for only 30–60 days. We offer all products at a significant discount during this limited release 
-              period. Once the product leaves our store, the discount ends with it.
-              </p>
+        <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.14),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_45%,_#1f2937)] py-20 md:py-24">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.16),_transparent_25%)]" />
+          <div className="container relative mx-auto px-4 text-center">
+            <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-medium text-neutral-100 backdrop-blur">
+              <Sparkles className="h-4 w-4" />
+              Limited drops • curated for members
             </div>
+            <h1 className="mx-auto mb-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              Shop the pieces that made the cut.
+            </h1>
+            <p className="mx-auto max-w-2xl text-base leading-7 text-neutral-300 sm:text-lg">
+              Discover successful campaign products available now, filtered by style, price, and release timing.
+            </p>
           </div>
         </section>
 
-        <section className="py-12 bg-neutral-50">
+        <section className="py-10 md:py-12">
           <div className="container mx-auto px-4">
-            {/* Search Bar */}
-            <div className="mb-8">
-              <div className="relative max-w-2xl mx-auto">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
-                <Input
-                  type="search"
-                  placeholder="Search drops..."
-                  className="pl-12 h-12 text-lg"
-                  value={searchTerm}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  disabled={isLoading}
-                />
+            <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="w-full max-w-2xl">
+                  <label className="mb-2 block text-sm font-medium text-neutral-700">Search</label>
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+                    <Input
+                      type="search"
+                      placeholder="Search drops, designers, or styles..."
+                      className="h-12 rounded-full border-neutral-200 bg-neutral-50 pl-12 text-base shadow-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <Button
+                    variant="outline"
+                    className="h-11 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"
+                    onClick={toggleFilters}
+                  >
+                    <SlidersHorizontal className="mr-2 h-4 w-4" />
+                    {showAdvancedFilters ? "Hide filters" : "Filters"}
+                  </Button>
+                  {(searchTerm || category || priceRange !== "all" || activeFilter !== "created_at") && (
+                    <Button
+                      variant="ghost"
+                      className="h-11 rounded-full px-4 text-neutral-700 hover:bg-neutral-100"
+                      onClick={handleClearFilters}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {(showAdvancedFilters || isMobileFiltersOpen) && (
+                <div className="mt-5 grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[1.1fr_0.9fr]">
+                  <div>
+                    <p className="mb-3 text-sm font-semibold text-neutral-900">Browse by category</p>
+                    <p className="mb-3 text-sm text-neutral-600">Pick a style or collection to narrow the results.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map((option) => (
+                        <Button
+                          key={option.id}
+                          variant={category === option.value ? "default" : "outline"}
+                          onClick={() => handleCategoryChange(option.value)}
+                          disabled={isLoading}
+                          className={category === option.value ? "h-10 rounded-full bg-neutral-900 px-4 text-white" : "h-10 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-3 text-sm font-semibold text-neutral-900">Price range</p>
+                    <p className="mb-3 text-sm text-neutral-600">Choose a budget to make browsing faster.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {priceFilterOptions.map((option) => (
+                        <Button
+                          key={option.id}
+                          variant={priceRange === option.id ? "default" : "outline"}
+                          onClick={() => handlePriceChange(option.id)}
+                          className={priceRange === option.id ? "h-10 rounded-full bg-neutral-900 px-4 text-white" : "h-10 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(searchTerm || category || priceRange !== "all" || activeFilter !== "created_at") && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={removeSearchFilter}
+                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    >
+                      Search: {searchTerm}
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {category && (
+                    <button
+                      type="button"
+                      onClick={removeCategoryFilter}
+                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    >
+                      Category
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {priceRange !== "all" && (
+                    <button
+                      type="button"
+                      onClick={removePriceFilter}
+                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    >
+                      Price: {priceFilterOptions.find((option) => option.id === priceRange)?.label}
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {activeFilter !== "created_at" && (
+                    <button
+                      type="button"
+                      onClick={removeSortFilter}
+                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    >
+                      Sort: {filterTabs.find((tab) => tab.id === activeFilter)?.label}
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                <p className="mr-2 text-sm font-medium text-neutral-700">Sort by</p>
+                {filterTabs.map((tab) => (
+                  <Button
+                    key={tab.id}
+                    variant={activeFilter === tab.id ? "default" : "outline"}
+                    onClick={() => handleFilterChange(tab.id)}
+                    disabled={isLoading}
+                    className={activeFilter === tab.id ? "h-10 rounded-full bg-neutral-900 px-4 text-white" : "h-10 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"}
+                  >
+                    {tab.label}
+                  </Button>
+                ))}
               </div>
             </div>
 
-            {/* Desktop Filters */}
-            <div className="mb-12 hidden md:flex items-center justify-center gap-4">
-              {filterTabs.map((tab) => (
-                <Button
-                  key={tab.id}
-                  variant={activeFilter === tab.id ? "default" : "outline"}
-                  onClick={() => handleFilterChange(tab.id)}
-                  disabled={isLoading}
-                >
-                  {tab.label}
-                </Button>
-              ))}
-            </div>
+            {isMobileFiltersOpen && (
+              <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => setIsMobileFiltersOpen(false)}>
+                <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border border-neutral-200 bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-neutral-900">Filter & sort</p>
+                      <p className="text-sm text-neutral-600">Refine results without leaving the page.</p>
+                    </div>
+                    <button type="button" onClick={() => setIsMobileFiltersOpen(false)} className="rounded-full p-2 text-neutral-600 hover:bg-neutral-100">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
 
-            {/* Mobile Filters */}
-            <div className="mb-12 md:hidden">
+                  <div className="mt-5 space-y-5">
+                    <div>
+                      <p className="mb-2 text-sm font-semibold text-neutral-900">Category</p>
+                      <div className="flex flex-wrap gap-2">
+                        {categories.map((option) => (
+                          <Button
+                            key={option.id}
+                            variant={category === option.value ? "default" : "outline"}
+                            onClick={() => handleCategoryChange(option.value)}
+                            className={category === option.value ? "rounded-full bg-neutral-900 px-4 text-white" : "rounded-full border-neutral-200 bg-white px-4 text-neutral-700"}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-sm font-semibold text-neutral-900">Price range</p>
+                      <div className="flex flex-wrap gap-2">
+                        {priceFilterOptions.map((option) => (
+                          <Button
+                            key={option.id}
+                            variant={priceRange === option.id ? "default" : "outline"}
+                            onClick={() => handlePriceChange(option.id)}
+                            className={priceRange === option.id ? "rounded-full bg-neutral-900 px-4 text-white" : "rounded-full border-neutral-200 bg-white px-4 text-neutral-700"}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-sm font-semibold text-neutral-900">Sort</p>
+                      <div className="flex flex-wrap gap-2">
+                        {filterTabs.map((tab) => (
+                          <Button
+                            key={tab.id}
+                            variant={activeFilter === tab.id ? "default" : "outline"}
+                            onClick={() => handleFilterChange(tab.id)}
+                            className={activeFilter === tab.id ? "rounded-full bg-neutral-900 px-4 text-white" : "rounded-full border-neutral-200 bg-white px-4 text-neutral-700"}
+                          >
+                            {tab.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex gap-2">
+                    <Button variant="outline" className="flex-1 rounded-full border-neutral-200" onClick={handleClearFilters}>
+                      Reset
+                    </Button>
+                    <Button className="flex-1 rounded-full bg-neutral-900 text-white" onClick={() => setIsMobileFiltersOpen(false)}>
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8 md:hidden">
               <MobileTabs
                 tabs={filterTabs}
                 activeTab={activeFilter}
@@ -276,77 +608,47 @@ export function ShopPageClient({
                 {isLoading ? (
                   <ProductsLoadingSkeleton />
                 ) : products.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {products.map((product) => (
                       <ProductCard key={product.id} product={product} />
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <p className="text-neutral-600">No products found</p>
+                  <div className="rounded-2xl border border-dashed border-neutral-300 bg-white py-12 text-center text-neutral-600">
+                    No products found for these filters.
                   </div>
                 )}
               </MobileTabs>
             </div>
 
-            {/* Product Grid */}
-            <div className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="mt-8 hidden md:grid grid-cols-2 gap-4 lg:grid-cols-4">
               {isLoading ? (
-                <ProductsLoadingSkeleton count={12} />
+                <ProductsLoadingSkeleton count={8} />
               ) : products.length > 0 ? (
                 products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))
               ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-neutral-600">No products found</p>
+                <div className="col-span-full rounded-2xl border border-dashed border-neutral-300 bg-white py-12 text-center text-neutral-600">
+                  No products found for these filters.
                 </div>
               )}
             </div>
 
-            {/* Pagination */}
-            {currentPagination.total_pages > 1 && (
-              <div className="mt-12 flex items-center justify-center gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => handlePageChange(currentPagination.page - 1)}
-                  disabled={currentPagination.page === 1 || isLoading}
-                >
-                  Previous
-                </Button>
-
-                {paginationPages.map((page, index) => (
-                  page === '...' ? (
-                    <span key={`ellipsis-${index}`} className="px-2 text-neutral-600">
-                      ...
-                    </span>
-                  ) : (
-                    <Button
-                      key={page}
-                      variant={page === currentPagination.page ? "default" : "outline"}
-                      onClick={() => handlePageChange(page as number)}
-                      disabled={isLoading}
-                      size="sm"
-                    >
-                      {page}
-                    </Button>
-                  )
-                ))}
-
-                <Button
-                  variant="outline"
-                  onClick={() => handlePageChange(currentPagination.page + 1)}
-                  disabled={!currentPagination.has_more || isLoading}
-                >
-                  Next
-                </Button>
-              </div>
+            <div ref={sentinelRef} className="h-8" />
+            {isLoading && products.length > 0 && (
+              <div className="mt-8 text-center text-sm text-neutral-600">Loading more products...</div>
             )}
 
-            {/* Results Info */}
             {products.length > 0 && (
-              <div className="mt-8 text-center text-sm text-neutral-600">
-                Showing {products.length} of {currentPagination.total} products (Page {currentPagination.page} of {currentPagination.total_pages})
+              <div className="mt-8 flex flex-col items-center justify-center gap-1 text-center text-sm text-neutral-600 sm:flex-row">
+                <span>{products.length} product{products.length === 1 ? "" : "s"} loaded</span>
+                {currentPagination.has_more && (
+                  <>
+                    <span className="hidden sm:inline">•</span>
+                    <span>Scroll to load more</span>
+                  </>
+                )}
               </div>
             )}
           </div>

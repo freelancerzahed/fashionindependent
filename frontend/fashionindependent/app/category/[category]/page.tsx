@@ -66,6 +66,8 @@ export default async function CategoryPage({
     fundedAmount: Math.floor(Math.random() * 15000) + 5000,
     backers: Math.floor(Math.random() * 100) + 20,
     daysRemaining: Math.floor(Math.random() * 28) + 2,
+    upvoteGoal: 200,
+    upvoteCount: Math.floor(Math.random() * 180) + 20,
     status: "active" as const,
     pledgeOptions: [],
     createdAt: new Date(),

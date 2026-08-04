@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+export const dynamic = "force-dynamic"
+
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { CampaignCard } from "@/components/campaign-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,183 +19,165 @@ interface Campaign {
   upvote_goal: number
   upvote_count: number
   product_name: string
-  product_images: string[]
-  creator: {
-    id: string
-    name: string
-    image?: string
-  }
-  end_date: string
-  days_remaining: number
-  funding_percentage: number
-  is_funded: boolean
-  views: number
-  shares: number
+  product_images?: Array<{ path?: string; url?: string } | string>
+  creator?: { id?: string; name?: string; image?: string }
+  end_date?: string
+  days_remaining?: number
+  funding_percentage?: number
+  is_funded?: boolean
+  views?: number
+  shares?: number
 }
 
-export default function DiscoverPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
+interface DiscoverPageProps {
+  initialCampaigns?: Campaign[]
+  initialCategories?: string[]
+  initialSearch?: string
+  initialCategory?: string
+}
 
-  const categoryTabs = [
+function resolveCampaignImage(productImages?: Array<{ path?: string; url?: string } | string>) {
+  if (!productImages || !Array.isArray(productImages) || productImages.length === 0) {
+    return "/placeholder.svg"
+  }
+
+  const firstImage = productImages[0]
+  const imagePath = typeof firstImage === "string"
+    ? firstImage
+    : firstImage?.path || firstImage?.url || ""
+
+  if (!imagePath) {
+    return "/placeholder.svg"
+  }
+
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    const parsed = new URL(imagePath)
+    const pathname = parsed.pathname
+    if (pathname.includes("/storage/")) {
+      return `/api/storage/${pathname.substring(pathname.indexOf("/storage/") + 9)}`
+    }
+    return pathname
+  }
+
+  const normalizedPath = imagePath.replace(/^\/+/, "")
+  if (normalizedPath.includes("storage/")) {
+    return `/api/storage/${normalizedPath.substring(normalizedPath.indexOf("storage/") + 8)}`
+  }
+
+  return normalizedPath.startsWith("/") ? normalizedPath : `/api/storage/${normalizedPath}`
+}
+
+function DiscoverPageContent({ initialCampaigns = [], initialCategories = [], initialSearch = "", initialCategory = "" }: DiscoverPageProps) {
+  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns)
+  const [categories, setCategories] = useState<string[]>(initialCategories)
+  const [loading, setLoading] = useState(false)
+  const [categoriesLoading, setCategoriesLoading] = useState(initialCategories.length === 0)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null)
+  const [searchQuery, setSearchQuery] = useState(initialSearch)
+
+  const categoryTabs = useMemo(() => [
     { id: "all", label: "All" },
     ...categories.map((cat) => ({ id: cat.toLowerCase(), label: cat })),
-  ]
+  ], [categories])
 
-  // Fetch categories from API
   useEffect(() => {
-    const fetchCategories = async () => {
+    const loadCategories = async () => {
       try {
         setCategoriesLoading(true)
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        
-        if (!apiUrl) {
-          throw new Error("API URL not configured")
-        }
-
-        const response = await fetch(`${apiUrl}/categories/menu`, {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          },
+        const response = await fetch("/api/categories/menu", {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
         })
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch categories: ${response.status}`)
-        }
+        if (!response.ok) throw new Error("Failed to load categories")
 
         const data = await response.json()
+        const categoryNames = Array.isArray(data.categories)
+          ? data.categories.map((cat: any) => cat.name || cat.title).filter(Boolean)
+          : []
 
-        if (data.result && data.categories && Array.isArray(data.categories)) {
-          const categoryNames = data.categories.map((cat: any) => cat.name || cat.title)
-          setCategories(categoryNames)
-          console.log("✓ Loaded", categoryNames.length, "categories:", categoryNames)
-        } else {
-          console.warn("⚠️ Unexpected categories response format:", data)
-          setCategories([])
-        }
+        setCategories(categoryNames)
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load categories"
-        console.error("❌ Error fetching categories:", message)
-        setCategories([])
+        console.error("[DiscoverPage] Failed to load categories", err)
       } finally {
         setCategoriesLoading(false)
       }
     }
 
-    fetchCategories()
-  }, [])
+    if (categories.length === 0) {
+      void loadCategories()
+    }
+  }, [categories.length])
 
-  // Fetch campaigns
   useEffect(() => {
-    const fetchCampaigns = async () => {
+    const loadCampaigns = async () => {
       try {
         setLoading(true)
         setError(null)
 
-        // Get API URL from environment
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        console.log("📡 API Base URL:", apiUrl)
+        const params = new URLSearchParams()
+        params.append("per_page", "12")
+        params.append("page", "1")
+        if (selectedCategory && selectedCategory !== "all") params.append("category", selectedCategory)
+        if (searchQuery) params.append("search", searchQuery)
 
-        if (!apiUrl) {
-          throw new Error("API URL not configured. Check NEXT_PUBLIC_API_URL in .env.local")
-        }
-
-        // Build the fetch URL
-        const fetchUrl = new URL(`${apiUrl}/campaign/active`)
-        fetchUrl.searchParams.append("per_page", "12")
-
-        if (selectedCategory && selectedCategory !== "all") {
-          fetchUrl.searchParams.append("category", selectedCategory)
-        }
-
-        if (searchQuery) {
-          fetchUrl.searchParams.append("search", searchQuery)
-        }
-
-        console.log("🔗 Fetching from:", fetchUrl.toString())
-
-        const response = await fetch(fetchUrl.toString(), {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          },
+        const response = await fetch(`/api/campaigns/active?${params.toString()}`, {
+          cache: "no-store",
+          headers: { Accept: "application/json" },
         })
 
-        console.log("✓ Response received, status:", response.status)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error("❌ HTTP Error:", response.status, errorText)
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const result = await response.json()
-        console.log("✓ Response parsed:", {
-          hasData: !!result.data,
-          dataLength: result.data?.length || 0,
-          status: result.status,
-        })
-
-        if (result.status === true && Array.isArray(result.data)) {
-          setCampaigns(result.data)
-          console.log(`✓ Loaded ${result.data.length} campaigns`)
-        } else {
-          console.warn("⚠️ Unexpected response format:", result)
-          setError("Invalid response format from server")
-        }
+        const data = await response.json()
+        const nextCampaigns = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : []
+        setCampaigns(nextCampaigns)
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        console.error("❌ Fetch failed:", message)
-        setError(message)
+        console.error("[DiscoverPage] Failed to load campaigns", err)
+        setError(err instanceof Error ? err.message : "Failed to load campaigns")
       } finally {
         setLoading(false)
       }
     }
 
-    // Debounce search
-    const timer = setTimeout(() => {
-      fetchCampaigns()
-    }, 500)
+    const timer = window.setTimeout(() => {
+      void loadCampaigns()
+    }, 300)
 
-    return () => clearTimeout(timer)
+    return () => window.clearTimeout(timer)
   }, [selectedCategory, searchQuery])
 
-  // Filter campaigns
-  const filteredCampaigns = campaigns.filter((campaign) => {
-    if (selectedCategory && selectedCategory !== "all") {
-      const categoryMatch = campaign.product_name
-        ?.toLowerCase()
-        .includes(selectedCategory.toLowerCase()) ||
-        campaign.description?.toLowerCase().includes(selectedCategory.toLowerCase())
-      if (!categoryMatch) return false
-    }
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter((campaign) => {
+      if (selectedCategory && selectedCategory !== "all") {
+        const categoryMatch =
+          campaign.product_name?.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+          campaign.description?.toLowerCase().includes(selectedCategory.toLowerCase())
+        if (!categoryMatch) return false
+      }
 
-    if (searchQuery) {
-      const searchMatch =
-        campaign.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        campaign.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        campaign.creator?.name.toLowerCase().includes(searchQuery.toLowerCase())
-      if (!searchMatch) return false
-    }
+      if (searchQuery) {
+        const searchMatch =
+          campaign.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          campaign.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          campaign.creator?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        if (!searchMatch) return false
+      }
 
-    return true
-  })
+      return true
+    })
+  }, [campaigns, searchQuery, selectedCategory])
 
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1">
-        {/* Hero */}
         <section className="bg-gradient-to-br from-neutral-50 to-neutral-100 py-12">
           <div className="container mx-auto px-4">
-            <h1 className="text-4xl font-bold mb-6 text-center">Designers in the Spotlight</h1>
+            <h1 className="text-4xl font-bold mb-6 text-center">Creatives in the spotlight</h1>
 
             <div className="max-w-2xl mx-auto relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
@@ -211,7 +195,6 @@ export default function DiscoverPage() {
 
         <section className="border-b bg-white py-4 sticky top-0 z-10">
           <div className="container mx-auto px-4">
-            {/* Desktop filters */}
             <div className="hidden md:flex gap-4 overflow-x-auto pb-2">
               <Button
                 variant={selectedCategory === null ? "default" : "outline"}
@@ -232,29 +215,24 @@ export default function DiscoverPage() {
               ))}
             </div>
 
-            {/* Mobile swiper tabs */}
             <div className="md:hidden">
               <MobileTabs
                 tabs={categoryTabs}
                 activeTab={selectedCategory === null ? "all" : selectedCategory}
                 onTabChange={(tabId) => setSelectedCategory(tabId === "all" ? null : tabId)}
               >
-                <div className="grid grid-cols-1 gap-4 mt-4">
-                  {/* Content will be rendered based on selected category */}
-                </div>
+                <div className="grid grid-cols-1 gap-4 mt-4" />
               </MobileTabs>
             </div>
           </div>
         </section>
 
-        {/* Campaigns Grid - Desktop */}
         <section className="py-12 bg-white hidden md:block">
           <div className="container mx-auto px-4">
             {renderContent(loading, error, filteredCampaigns)}
           </div>
         </section>
 
-        {/* Campaigns Grid - Mobile */}
         <section className="py-12 bg-white md:hidden">
           <div className="container mx-auto px-4">
             {renderContent(loading, error, filteredCampaigns)}
@@ -300,48 +278,69 @@ function renderContent(loading: boolean, error: string | null, campaigns: Campai
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {campaigns.map((campaign) => {
-        // Extract and process image URL like in dashboard
-        let imageUrl = "/placeholder-campaign.jpg"
-        if (campaign.product_images && campaign.product_images.length > 0) {
-          const img = campaign.product_images[0] as any
-          let imagePath = typeof img === "object" ? (img?.path || img?.url || "") : (img || "")
-          
-          if (imagePath?.includes("storage/")) {
-            imagePath = imagePath.substring(imagePath.indexOf("storage/") + 8)
-          }
-          
-          imageUrl = `/api/storage/${imagePath}`
-        }
+        const imageUrl = resolveCampaignImage(campaign.product_images)
 
         return (
-        <CampaignCard
-          key={campaign.id}
-          campaign={{
-            id: campaign.id,
-            title: campaign.title,
-            designer: campaign.creator?.name || "Unknown",
-            image: imageUrl,
-            category: campaign.product_name || "",
-            subcategory: "",
-            description: campaign.description,
-            fundingGoal: campaign.funding_goal,
-            fundedAmount: campaign.current_funding,
-            backers: campaign.backer_count,
-            daysRemaining: campaign.days_remaining,
-            upvoteGoal: campaign.upvote_goal || 5000,
-            upvoteCount: campaign.upvote_count || 0,
-            status:
-              campaign.is_funded && campaign.days_remaining <= 0
-                ? "ended"
-                : campaign.days_remaining <= 3
-                  ? "closing-soon"
-                  : "active",
-            pledgeOptions: [],
-            createdAt: new Date(),
-          }}
-        />
+          <CampaignCard
+            key={campaign.id}
+            campaign={{
+              id: campaign.id,
+              title: campaign.title,
+              designer: campaign.creator?.name || "Unknown",
+              image: imageUrl,
+              category: campaign.product_name || "",
+              subcategory: "",
+              description: campaign.description,
+              fundingGoal: campaign.funding_goal,
+              fundedAmount: campaign.current_funding,
+              backers: campaign.backer_count,
+              daysRemaining: campaign.days_remaining || 0,
+              upvoteGoal: campaign.upvote_goal,
+              upvoteCount: campaign.upvote_count,
+              status:
+                campaign.is_funded && (campaign.days_remaining || 0) <= 0
+                  ? "ended"
+                  : (campaign.days_remaining || 0) <= 3
+                    ? "closing-soon"
+                    : "active",
+              pledgeOptions: [],
+              createdAt: new Date(),
+            }}
+          />
         )
       })}
+    </div>
+  )
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense fallback={<DiscoverPageSkeleton />}>
+      <DiscoverPageContent />
+    </Suspense>
+  )
+}
+
+function DiscoverPageSkeleton() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1">
+        <section className="bg-gradient-to-br from-neutral-50 to-neutral-100 py-12">
+          <div className="container mx-auto px-4">
+            <div className="mx-auto h-10 w-48 animate-pulse rounded bg-neutral-200" />
+            <div className="mx-auto mt-4 h-12 max-w-2xl animate-pulse rounded bg-neutral-200" />
+          </div>
+        </section>
+        <section className="py-12 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="h-72 animate-pulse rounded-xl bg-neutral-200" />
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   )
 }

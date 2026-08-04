@@ -4,82 +4,95 @@ import Link from "next/link"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import Image from "next/image"
 import type { Campaign } from "@/lib/data"
-import { useState, useEffect } from "react"
-import { BACKEND_URL } from "@/config"
+import { memo, useEffect, useMemo, useRef, useState } from "react"
 
 interface CampaignCardProps {
   campaign: Campaign
 }
 
-export default function CampaignCard({ campaign }: CampaignCardProps) {
-  // State for handling hydration issues
-  const [upvotePercentage, setUpvotePercentage] = useState(0);
-  const [timeDisplay, setTimeDisplay] = useState<string>("");
-  const [backersCount, setBackersCount] = useState<string>("--");
-  const [upvoteCount, setUpvoteCount] = useState<string>("--");
-  const [upvoteGoalFormatted, setUpvoteGoalFormatted] = useState<string>("--");
+const CampaignCard = memo(function CampaignCard({ campaign }: CampaignCardProps) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const [questionStats, setQuestionStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
-  
-  useEffect(() => {
-    // Calculate upvote percentage on client side only to prevent hydration mismatch
-    const upvoteGoal = campaign.upvoteGoal || 1;
-    const upvoteVotes = campaign.upvoteCount || 0;
-    const percentage = Math.round((upvoteVotes / upvoteGoal) * 100);
-    setUpvotePercentage(percentage);
-    
-    // Calculate time values on client side only to prevent hydration mismatch
-    const totalDays = campaign.daysRemaining;
+
+  const upvotePercentage = useMemo(() => {
+    const upvoteGoal = Number.isFinite(Number(campaign.upvoteGoal)) ? Number(campaign.upvoteGoal) : 1;
+    const upvoteVotes = Number.isFinite(Number(campaign.upvoteCount)) ? Number(campaign.upvoteCount) : 0;
+    return Math.round((upvoteVotes / upvoteGoal) * 100);
+  }, [campaign.upvoteCount, campaign.upvoteGoal]);
+
+  const timeDisplay = useMemo(() => {
+    const totalDays = Number.isFinite(Number(campaign.daysRemaining)) ? Number(campaign.daysRemaining) : 0;
     const days = Math.floor(totalDays);
     const hoursLeft = Math.floor((totalDays - days) * 24);
-    const displayText = `${days.toString().padStart(2, "0")}d : ${hoursLeft.toString().padStart(2, "0")}h`;
-    setTimeDisplay(displayText);
+    return `${days.toString().padStart(2, "0")}d : ${hoursLeft.toString().padStart(2, "0")}h`;
+  }, [campaign.daysRemaining]);
 
-    // Set backers count on client side to prevent hydration mismatch
-    setBackersCount(campaign.backers.toString());
-    
-    // Set upvote count on client side to prevent hydration mismatch
-    setUpvoteCount((campaign.upvoteCount || 0).toLocaleString());
-    setUpvoteGoalFormatted((campaign.upvoteGoal || 0).toLocaleString());
+  const backersCount = useMemo(() => String(Number.isFinite(Number(campaign.backers)) ? Number(campaign.backers) : 0), [campaign.backers]);
+  const upvoteCount = useMemo(() => (Number.isFinite(Number(campaign.upvoteCount)) ? Number(campaign.upvoteCount) : 0).toLocaleString(), [campaign.upvoteCount]);
+  const upvoteGoalFormatted = useMemo(() => (Number.isFinite(Number(campaign.upvoteGoal)) ? Number(campaign.upvoteGoal) : 0).toLocaleString(), [campaign.upvoteGoal]);
 
-    // Fetch question statistics
+  useEffect(() => {
+    if (!campaign.id || questionStats || loadingStats) return;
+
     const fetchQuestionStats = async () => {
       try {
         setLoadingStats(true);
-        const response = await fetch(`${BACKEND_URL}/campaign/${campaign.id}/question-statistics`);
+        const response = await fetch(`/api/campaign/${campaign.id}/question-statistics`);
         if (response.ok) {
           const data = await response.json();
           if (data.status && data.data) {
             setQuestionStats(data.data);
           }
         }
-      } catch (error) {
-        console.error("Error fetching question statistics:", error);
+      } catch {
       } finally {
         setLoadingStats(false);
       }
     };
 
-    fetchQuestionStats();
-  }, [campaign.upvoteCount, campaign.upvoteGoal, campaign.daysRemaining, campaign.backers, campaign.id])
+    const node = cardRef.current;
+    if (!node) {
+      void fetchQuestionStats();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void fetchQuestionStats();
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [campaign.id, loadingStats, questionStats]);
 
   return (
-    <Card className="overflow-hidden group">
+    <Card ref={cardRef} className="overflow-hidden group">
       
       <div className="aspect-[3/4] bg-neutral-200 relative overflow-hidden">
         <Image
           src={campaign.image && typeof campaign.image === 'string' && campaign.image.trim() ? campaign.image : "/placeholder.svg"}
-          alt={campaign.title}
+          alt={typeof campaign.title === 'string' && campaign.title.trim() ? campaign.title : "Campaign image"}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
           onError={() => {}}
-          priority={false}
         />
       </div>
       <div className="text-md my-0 pr-1 font-bold text-right">⭐ Active</div>
       <CardContent className="p-4">
-        <p className="text-xs text-neutral-600 mb-1">by {campaign.designer}</p>
-        <h3 className="font-semibold text-lg mb-2">{campaign.title}</h3>
+        <p className="text-xs text-neutral-600 mb-1">by {typeof campaign.designer === 'string' && campaign.designer.trim() ? campaign.designer : "Unknown designer"}</p>
+        <h3 className="mb-2 text-lg font-semibold" title={typeof campaign.title === 'string' ? campaign.title : ""}>
+          {typeof campaign.title === 'string' && campaign.title.trim()
+            ? campaign.title.slice(0, 30) + (campaign.title.length > 30 ? "..." : "")
+            : "Untitled campaign"}
+        </h3>
         <div className="flex items-center justify-between text-sm mb-3">
           <span className="text-neutral-600">Time remaining:</span>
           <span className="font-mono font-semibold">
@@ -133,6 +146,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
       </CardFooter>
     </Card>
   )
-}
+})
 
 export { CampaignCard }
+export default CampaignCard

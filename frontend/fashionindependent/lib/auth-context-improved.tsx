@@ -45,11 +45,16 @@ async function secureApiFetch(
     headers.set('X-CSRF-Token', csrfToken)
   }
   
-  headers.set('Content-Type', 'application/json')
+  // Only set content-type for non-GET requests when body is JSON
+  if ((!options.method || options.method.toUpperCase() !== 'GET') && !headers.get('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   return fetch(url, {
     ...options,
     headers,
+    // Ensure cookies are sent to the backend when using cookie-based auth
+    credentials: 'include',
   })
 }
 
@@ -66,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Note: Your backend should provide a CSRF token endpoint
       // This is a placeholder - adjust to your actual endpoint
-      const response = await fetch(`${BACKEND_URL}/csrf-token`)
+      const response = await fetch(`${BACKEND_URL}/csrf-token`, { credentials: 'include' })
       if (response.ok) {
         const data = await response.json()
         setCsrfToken(data.csrf_token)
@@ -140,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...(csrfToken && { "X-CSRF-Token": csrfToken }),
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include',
       })
 
       const data = await response.json()
@@ -190,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...(csrfToken && { "X-CSRF-Token": csrfToken }),
         },
         body: JSON.stringify({ email, password, name, role }),
+        credentials: 'include',
       })
 
       const data = await response.json()

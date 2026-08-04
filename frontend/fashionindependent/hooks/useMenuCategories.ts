@@ -22,12 +22,7 @@ export function useMenuCategories() {
         setLoading(true)
         setError(null)
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-        if (!apiUrl) {
-          throw new Error("API URL not configured")
-        }
-
-        const response = await fetch(`${apiUrl}/categories/menu`, {
+        const response = await fetch("/api/categories/menu", {
           method: "GET",
           headers: {
             "Accept": "application/json",

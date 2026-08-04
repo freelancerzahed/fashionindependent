@@ -134,7 +134,7 @@ export default function CreatorProfilePage() {
 
   // Use user data from context if profile API call failed
   const displayProfile = profile || {
-    name: user?.name || "Creator",
+    name: user?.name || "Creative",
     email: user?.email,
     bio: null,
     location: null,
@@ -160,7 +160,7 @@ export default function CreatorProfilePage() {
           
           {/* Profile Info */}
           <div className="flex-1">
-            <h1 className="text-4xl font-bold mb-2">{displayProfile?.name || user?.name || "Creator"}</h1>
+            <h1 className="text-4xl font-bold mb-2">{displayProfile?.name || user?.name || "Creative"}</h1>
             <p className="text-lg text-neutral-600 mb-4">{displayProfile?.title || "Independent Designer"}</p>
             
             {/* Description */}

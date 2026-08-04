@@ -2,12 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
+import { GOOGLE_OAUTH_CONFIG, SITE_URL } from "@/config"
 import Link from "next/link"
 import { AlertCircle, Eye, EyeOff, CheckCircle, Handshake } from "lucide-react"
 
@@ -28,18 +29,33 @@ export default function LoginPage() {
     setError("")
   }
 
-  const handleGoogleSignIn = () => {
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""
-    const redirectUri = `${window.location.origin}/api/auth/google/callback`
+  const [googleOAuthUrl, setGoogleOAuthUrl] = useState("")
+
+  useEffect(() => {
+    const clientId = GOOGLE_OAUTH_CONFIG.clientId
+    if (!clientId) {
+      console.warn("[Google OAuth] Missing Google Client ID")
+      return
+    }
+
+    const origin = SITE_URL || (typeof window !== "undefined" ? window.location.origin : "")
+    if (!origin) {
+      console.warn("[Google OAuth] Unable to determine origin for redirect URI")
+      return
+    }
+
+    const redirectUri = `${origin.replace(/\/$/, "")}/api/auth/google/callback`
     const googleAuthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
     googleAuthUrl.searchParams.append("client_id", clientId)
     googleAuthUrl.searchParams.append("redirect_uri", redirectUri)
     googleAuthUrl.searchParams.append("response_type", "code")
     googleAuthUrl.searchParams.append("scope", "openid email profile")
-    // Force Google to show the account chooser so the user can pick another account
-    googleAuthUrl.searchParams.append("prompt", "select_account")
-    window.location.href = googleAuthUrl.toString()
-  }
+    googleAuthUrl.searchParams.append("access_type", "offline")
+    googleAuthUrl.searchParams.append("include_granted_scopes", "true")
+    googleAuthUrl.searchParams.append("prompt", "consent")
+
+    setGoogleOAuthUrl(googleAuthUrl.toString())
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,11 +63,14 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      console.log("[Login] Attempting login with:", { email, apiBase: "/api" })
       await login(email, password)
-
+      console.log("[Login] Success, redirecting to dashboard")
       router.replace("/dashboard")
     } catch (err) {
-      setError("Invalid email or password")
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      console.error("[Login] Failed:", errorMsg)
+      setError(errorMsg || "Invalid email or password. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -221,11 +240,11 @@ export default function LoginPage() {
 
             {/* Google Login */}
             <div className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full py-3 border-2 border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
-                onClick={handleGoogleSignIn}
+              <a
+                href={googleOAuthUrl || undefined}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border-2 border-slate-200 bg-white py-3 text-slate-700 font-semibold transition-all duration-200 hover:border-slate-300 hover:bg-slate-50"
+                aria-disabled={!googleOAuthUrl}
+                tabIndex={googleOAuthUrl ? 0 : -1}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -234,7 +253,7 @@ export default function LoginPage() {
                   <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
                 Sign in with Google
-              </Button>
+              </a>
             </div>
 
             {/* Sign Up Link */}

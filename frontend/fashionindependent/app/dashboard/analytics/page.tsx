@@ -73,7 +73,7 @@ export default function AnalyticsDashboardPage() {
     setError("")
 
     try {
-      const analyticsRes = await fetch(`${BACKEND_URL}/analytics/creator`, {
+      const analyticsRes = await fetch(`/api/analytics/creator`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

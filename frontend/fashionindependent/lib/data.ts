@@ -1,4 +1,4 @@
-// Mock campaign data
+
 export interface Campaign {
   id: string
   title: string
@@ -188,6 +188,8 @@ export const mockCampaigns: Campaign[] = [
     fundedAmount: 3500,
     backers: 45,
     daysRemaining: 7,
+    upvoteGoal: 5000,
+    upvoteCount: 3500,
     status: "closing-soon",
     pledgeOptions: [
       { id: "1-1", amount: 50, description: "Early Bird - 30% off", quantity: 20 },
@@ -208,6 +210,8 @@ export const mockCampaigns: Campaign[] = [
     fundedAmount: 8500,
     backers: 120,
     daysRemaining: 3,
+    upvoteGoal: 8000,
+    upvoteCount: 6200,
     status: "funded",
     pledgeOptions: [
       { id: "2-1", amount: 60, description: "Single Shirt", quantity: 50 },
@@ -228,6 +232,8 @@ export const mockCampaigns: Campaign[] = [
     fundedAmount: 2100,
     backers: 35,
     daysRemaining: 15,
+    upvoteGoal: 4000,
+    upvoteCount: 2100,
     status: "active",
     pledgeOptions: [
       { id: "3-1", amount: 35, description: "Single Piece", quantity: 100 },
@@ -247,6 +253,8 @@ export const mockCampaigns: Campaign[] = [
     fundedAmount: 12000,
     backers: 200,
     daysRemaining: 10,
+    upvoteGoal: 15000,
+    upvoteCount: 13000,
     status: "active",
     pledgeOptions: [
       { id: "4-1", amount: 150, description: "Early Bird Special", quantity: 30 },

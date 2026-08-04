@@ -54,14 +54,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
-    const contentType = request.headers.get("content-type");
 
     // Use the createEndpoint which should point to the backend campaign creation endpoint
     const endpoint = `${BACKEND_URL}${CAMPAIGN_CONFIG.createEndpoint}`;
     console.log("[Campaign] API route called", {
       hasAuthHeader: !!authHeader,
       authHeaderPreview: authHeader ? authHeader.substring(0, 30) + "..." : null,
-      contentType,
       backendEndpoint: endpoint
     });
 
@@ -73,43 +71,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Read the request body as JSON
-    const body = await request.json()
-    
+    const contentType = request.headers.get("content-type") || "";
+    let payload: Record<string, unknown> | null = null;
+    let formData: FormData | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      formData = await request.formData();
+      payload = Object.fromEntries(formData.entries()) as Record<string, unknown>;
+    } else {
+      payload = await request.json().catch(() => null);
+    }
+
+    const normalizedPayload = payload && typeof payload === "object" ? payload : {};
+
     console.log("[Campaign] Request body received:", {
-      hasTitle: !!body.title,
-      hasDescription: !!body.description,
-      hasFundingGoal: !!body.funding_goal,
-      materialsCount: Array.isArray(body.materials) ? body.materials.length : 0,
-      colorsCount: Array.isArray(body.colors) ? body.colors.length : 0,
-      sizesCount: Array.isArray(body.sizes) ? body.sizes.length : 0,
+      hasTitle: !!normalizedPayload.title,
+      hasDescription: !!normalizedPayload.description,
+      hasFundingGoal: !!normalizedPayload.funding_goal,
+      materialsType: Array.isArray(normalizedPayload.materials) ? "array" : typeof normalizedPayload.materials,
+      colorsType: Array.isArray(normalizedPayload.colors) ? "array" : typeof normalizedPayload.colors,
+      sizesType: Array.isArray(normalizedPayload.sizes) ? "array" : typeof normalizedPayload.sizes,
     });
 
-    // Validate required fields
-    const requiredFields = ['title', 'description', 'funding_goal', 'product_name'];
-    const missingFields = requiredFields.filter(field => !body[field]);
-    
+    const requiredFields = ["title", "description", "funding_goal", "product_name"];
+    const missingFields = requiredFields.filter((field) => !normalizedPayload[field as keyof typeof normalizedPayload]);
+
     if (missingFields.length > 0) {
       console.warn("[Campaign] Missing required fields", { missingFields });
       return NextResponse.json(
-        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { error: `Missing required fields: ${missingFields.join(", ")}` },
         { status: 400 }
       );
     }
 
-    // Forward the JSON payload to the backend
-    console.log("[Campaign] Calling backend", { url: endpoint, bodyKeys: Object.keys(body) });
+    console.log("[Campaign] Calling backend", { url: endpoint, payloadKeys: Object.keys(normalizedPayload) });
 
     let response;
     try {
-      response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Authorization": authHeader,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body), // Send JSON directly
-      });
+      if (formData) {
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+          },
+          body: formData,
+        });
+      } else {
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Authorization": authHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(normalizedPayload),
+        });
+      }
     } catch (fetchError) {
       const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError);
       console.error("[Campaign] Fetch request failed", {
@@ -145,35 +161,48 @@ export async function POST(request: NextRequest) {
     }
 
     if (!response.ok) {
-      console.error("Backend error response:", { 
-        status: response.status, 
-        body: responseText.substring(0, 500) 
+      console.error("Backend error response:", {
+        status: response.status,
+        body: responseText.substring(0, 500),
+        contentType: response.headers.get("content-type") || "",
       });
-      
+
       try {
         const errorData = JSON.parse(responseText);
+        const rawPayload = errorData.raw && typeof errorData.raw === "object" ? errorData.raw : {};
+        const combinedErrorMessage = [
+          rawPayload.message,
+          rawPayload.error,
+          rawPayload.detail,
+          errorData.message,
+          errorData.error,
+          errorData.detail,
+        ]
+          .filter((value): value is string => typeof value === "string" && value.trim() !== "")
+          .join(" - ");
+
         console.log("[Campaign] Parsed error data:", errorData);
         return NextResponse.json(
-          { 
-            error: errorData.message || errorData.error || "Failed to create campaign",
-            errors: errorData.errors || errorData.errors
+          {
+            error: combinedErrorMessage || "Failed to create campaign",
+            errors: errorData.errors || errorData.validation_errors || rawPayload.errors || rawPayload.validation_errors || null,
+            raw: errorData,
           },
           { status: response.status }
         );
       } catch {
-        // If response is HTML (error page), just return generic error
-        if (responseText.includes("<!DOCTYPE") || responseText.includes("<html")) {
-          console.error("[Campaign] Backend returned HTML error page");
-          return NextResponse.json(
-            { error: "Backend error: Please try again later" },
-            { status: response.status }
-          );
-        }
-        
-        const errorPreview = responseText.substring(0, 200);
+        const errorPreview = responseText.substring(0, 400);
+        const fallbackMessage = responseText.includes("<!DOCTYPE") || responseText.includes("<html")
+          ? "Backend returned an HTML error page. Please check the backend configuration or logs."
+          : errorPreview || `Backend returned an unexpected response (${response.status}).`;
+
         console.error("[Campaign] Could not parse error response as JSON", { preview: errorPreview });
         return NextResponse.json(
-          { error: `Backend error (${response.status}): ${errorPreview}` },
+          {
+            error: fallbackMessage,
+            raw: responseText,
+            status: response.status,
+          },
           { status: response.status }
         );
       }

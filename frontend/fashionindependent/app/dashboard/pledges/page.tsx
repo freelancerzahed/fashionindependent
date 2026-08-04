@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Heart, Award, DollarSign, TrendingUp, Loader2 } from "lucide-react"
-import { BACKEND_URL } from "@/config"
 
 export default function MyPledgesPage() {
   const { user, token } = useAuth()
@@ -27,7 +26,7 @@ export default function MyPledgesPage() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${BACKEND_URL}/pledge/user`, {
+      const response = await fetch(`/api/pledge/user`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

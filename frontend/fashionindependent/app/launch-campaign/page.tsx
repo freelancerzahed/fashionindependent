@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/lib/auth-context"
 import { CampaignLaunchForm, type CampaignFormData } from "@/components/campaign-launch-form"
-import { BACKEND_URL } from "@/config"
 
 export default function LaunchCampaignPage() {
   const [step, setStep] = useState(1)
@@ -51,12 +50,12 @@ export default function LaunchCampaignPage() {
           <div className="bg-white rounded-lg p-8 text-center space-y-6">
             <h1 className="text-3xl font-bold">Launch Your Campaign</h1>
             <p className="text-neutral-700">
-              You need to be a registered creator to launch a campaign.
+              You need to be a registered creative to launch a campaign.
             </p>
             <div className="flex gap-4">
-              <Link href="/become-creator" className="flex-1">
+              <Link href="/signup?role=creator" className="flex-1">
                 <Button className="w-full bg-neutral-900 text-white hover:bg-neutral-800 h-12 font-semibold text-base">
-                  Become a Creator
+                  Become a Creative
                 </Button>
               </Link>
               <Link href="/login" className="flex-1">
@@ -106,19 +105,30 @@ export default function LaunchCampaignPage() {
     setIsSubmittingCampaign(true)
     try {
       const token = localStorage.getItem("auth_token")
+      const userData = localStorage.getItem("user")
       if (!token) {
-        throw new Error("Authentication required. Please log in to continue.")
+        setSubmissionError("You need to sign in before launching a campaign.")
+        router.push("/login")
+        return
+      }
+
+      let parsedUser = null
+      try {
+        parsedUser = userData ? JSON.parse(userData) : null
+      } catch {
+        parsedUser = null
       }
 
       console.log("[Campaign] Submitting campaign with token:", token.substring(0, 30) + "...")
+      console.log("[Campaign] Current user from storage:", parsedUser)
 
-      // Create JSON payload instead of FormData for better compatibility
-      // Files are optional for now - will be added later via separate file upload API
+      const normalizedProductName = campaignData.productName.trim().slice(0, 30)
       const payload = {
-        title: campaignData.productName,
+        title: normalizedProductName,
         description: campaignData.productDescription,
-        funding_goal: 5000, // Default funding goal
-        product_name: campaignData.productName,
+        funding_goal: Number(campaignData.fundingGoal || 5000),
+        sale_price: Number(campaignData.salePrice || 0),
+        product_name: normalizedProductName,
         product_description: campaignData.productDescription,
         materials: campaignData.materials
           .filter(m => m.name.trim() && m.percentage.trim())
@@ -164,7 +174,7 @@ export default function LaunchCampaignPage() {
 
       let response;
       try {
-        response = await fetch(`${BACKEND_URL}/campaign`, {  // Using the main campaign endpoint
+        response = await fetch("/api/campaign", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -196,38 +206,57 @@ export default function LaunchCampaignPage() {
           responseText = await responseClone.text()
           console.error("[Campaign] Error response body:", responseText)
           
-          // Try to parse as JSON
           try {
             const errorData = JSON.parse(responseText)
             console.error("[Campaign] Parsed error data:", errorData)
-            errorMessage = errorData.error || errorData.message || errorMessage
-            
-            // Provide helpful error messages based on status code
-            if (response.status === 401) {
-              errorMessage = "Your session has expired. Please log in again."
-            } else if (response.status === 403) {
-              errorMessage = errorData.message || "You need to complete your creator profile to launch campaigns."
-            } else if (response.status === 422) {
-              errorMessage = "Please fill in all required fields correctly."
-              if (errorData.errors) {
-                const errorDetails = Object.entries(errorData.errors)
-                  .map(([field, msgs]: [string, any]) => {
-                    const fieldName = field.replace(/_/g, ' ')
-                    const message = Array.isArray(msgs) ? msgs.join(", ") : msgs
+
+            const rawPayload = errorData.raw && typeof errorData.raw === "object" ? errorData.raw : {}
+            const nestedMessage = [
+              rawPayload.message,
+              rawPayload.error,
+              rawPayload.detail,
+              rawPayload.title,
+            ]
+              .filter((value): value is string => typeof value === "string" && value.trim() !== "")
+              .join(" - ")
+
+            const backendMessage = nestedMessage || errorData.error || errorData.message || errorData.detail || errorData.title || ""
+            const validationErrors = errorData.errors || errorData.validation_errors || rawPayload.errors || rawPayload.validation_errors || null
+            const errorDetails = validationErrors
+              ? Object.entries(validationErrors as Record<string, unknown>)
+                  .map(([field, msgs]) => {
+                    const fieldName = String(field).replace(/_/g, " ")
+                    const message = Array.isArray(msgs)
+                      ? msgs.filter((msg): msg is string => typeof msg === "string" && msg.trim() !== "").join(", ")
+                      : typeof msgs === "string" && msgs.trim()
+                        ? msgs
+                        : JSON.stringify(msgs)
                     return `${fieldName}: ${message}`
                   })
                   .join("\n")
+              : ""
+
+            if (response.status === 401) {
+              errorMessage = backendMessage || "Unauthenticated. Please sign in again to continue."
+              setSubmissionError(errorMessage)
+              router.push("/login")
+            } else if (response.status === 403) {
+              errorMessage = backendMessage || "You need to complete your creative profile to launch campaigns."
+            } else if (response.status === 400) {
+              errorMessage = backendMessage || "The campaign data is incomplete or invalid."
+            } else if (response.status === 422) {
+              errorMessage = backendMessage || "Please fill in all required fields correctly."
+              if (errorDetails) {
                 errorMessage += "\n" + errorDetails
-                console.error("[Campaign] Validation errors:", errorDetails)
               }
             } else if (response.status === 503) {
-              // Backend server unreachable
               errorMessage = "The backend server is temporarily unavailable. Please try again in a few moments."
             } else if (response.status === 500 || response.status >= 500) {
-              errorMessage = errorData.error || "Server error. Please try again later."
+              errorMessage = backendMessage || "Server error. Please try again later."
+            } else {
+              errorMessage = backendMessage || errorMessage
             }
           } catch (parseError) {
-            // Response is not JSON, use the raw text
             if (responseText) {
               errorMessage = `Server error (${response.status}): ${responseText.substring(0, 200)}`
             } else if (response.status === 503) {
@@ -250,6 +279,23 @@ export default function LaunchCampaignPage() {
       
       // Extract campaign ID - handle different response structures
       const campaignId = result?.campaign?.id || result?.id
+
+      if (campaignId) {
+        const submitResponse = await fetch(`/api/campaign/${campaignId}/submit`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        const submitResult = await submitResponse.json().catch(() => ({}))
+        if (!submitResponse.ok) {
+          throw new Error(submitResult.message || submitResult.error || "Failed to submit campaign for review")
+        }
+
+        console.log("Campaign submitted for review successfully:", submitResult)
+      }
       
       // Now upload files if they exist
       if (campaignId && campaignData.productImages.length > 0) {
@@ -307,7 +353,7 @@ export default function LaunchCampaignPage() {
         console.log("[Campaign] FormData prepared with", successfullyAddedFiles, "images")
         
         try {
-          const uploadResponse = await fetch(`${BACKEND_URL}/campaign/${campaignId}/upload-files`, {
+          const uploadResponse = await fetch(`/api/campaign/upload/${campaignId}`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,

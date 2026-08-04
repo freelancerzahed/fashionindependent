@@ -10,6 +10,8 @@ import { Card } from "@/components/ui/card"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { CheckCircle, AlertCircle, Edit2, Plus, X } from "lucide-react"
 
+import { useAuth } from "@/lib/auth-context"
+
 export default function AccountSettingsPage() {
   const [settingsData, setSettingsData] = useState({
     // Personal Information
@@ -42,6 +44,7 @@ export default function AccountSettingsPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const { user, token } = useAuth()
 
   const handleSettingsChange = (field: string, value: string) => {
     setSettingsData((prev) => ({ ...prev, [field]: value }))
@@ -81,9 +84,13 @@ export default function AccountSettingsPage() {
     setLoading(true)
     setError("")
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (token) headers["Authorization"] = `Bearer ${token}`
+      if (user?.id) headers["x-user-id"] = String(user.id)
+
       const response = await fetch("/api/settings/account", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ ...settingsData, socialLinks }),
       })
 

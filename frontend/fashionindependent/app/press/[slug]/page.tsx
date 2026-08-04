@@ -24,8 +24,6 @@ export default function PressDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/mirrormefashion/api/v2'
-
   useEffect(() => {
     if (!slug) return
 
@@ -33,7 +31,7 @@ export default function PressDetailPage() {
       try {
         setLoading(true)
         setError('')
-        const response = await fetch(`${apiUrl}/blog-details/${slug}`, {
+        const response = await fetch(`/api/blog/details/${slug}`, {
           headers: { Accept: 'application/json' },
         })
 
@@ -43,14 +41,16 @@ export default function PressDetailPage() {
 
         const data = await response.json()
 
-        if (data.result && data.blog) {
-          const blog = data.blog
-          // Transform blog data to match PressRelease interface
+        const blog = data?.blog || (Array.isArray(data?.recent_blogs)
+          ? data.recent_blogs.find((item: any) => item.slug === slug)
+          : null)
+
+        if (blog) {
           setRelease({
             id: blog.id,
             title: blog.title,
             slug: blog.slug,
-            excerpt: blog.short_description || '',
+            excerpt: blog.short_description || blog.description || '',
             content: blog.content || blog.description || '',
             published_date: blog.created_at,
             is_active: blog.status === 1,
@@ -66,7 +66,7 @@ export default function PressDetailPage() {
     }
 
     fetchRelease()
-  }, [slug, apiUrl])
+  }, [slug])
 
   if (loading) {
     return (

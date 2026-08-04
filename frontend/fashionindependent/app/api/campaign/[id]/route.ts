@@ -8,14 +8,6 @@ export async function GET(
   try {
     const { id } = await context.params;
     const authHeader = request.headers.get("authorization");
-    
-    if (!authHeader) {
-      console.warn("[Campaign] Missing authorization header");
-      return NextResponse.json(
-        { error: "Authentication required. Please log in." },
-        { status: 401 }
-      );
-    }
 
     if (!id) {
       return NextResponse.json(
@@ -24,35 +16,57 @@ export async function GET(
       );
     }
 
-    // Using the correct endpoint pattern from CAMPAIGN_CONFIG
-    const endpoint = `${BACKEND_URL}${CAMPAIGN_CONFIG.getEndpoint(id)}`;
-    console.log("[Campaign] Fetching specific campaign", {
-      id,
-      hasAuthHeader: !!authHeader,
-      backendEndpoint: endpoint
-    });
+    const candidateEndpoints = [
+      `${BACKEND_URL}${CAMPAIGN_CONFIG.getEndpoint(id)}`,
+      `${BACKEND_URL}/campaigns/${id}`,
+    ];
 
-    const response = await fetch(endpoint, {
-      method: "GET",
-      headers: {
-        "Authorization": authHeader,
-        "Content-Type": "application/json",
-      },
-    });
+    let lastError: { status: number; body: string } | null = null;
 
-    if (!response.ok) {
-      console.error("Backend error response:", { 
-        status: response.status 
+    for (const endpoint of candidateEndpoints) {
+      console.log("[Campaign] Fetching specific campaign", {
+        id,
+        hasAuthHeader: !!authHeader,
+        backendEndpoint: endpoint
       });
-      
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          ...(authHeader ? { Authorization: authHeader } : {}),
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return NextResponse.json(data);
+      }
+
+      const text = await response.text();
+      lastError = { status: response.status, body: text };
+      console.error("Backend error response:", {
+        status: response.status,
+        body: text,
+        endpoint,
+      });
+
+      if (response.status !== 403 && response.status !== 404) {
+        break;
+      }
+    }
+
+    if (lastError) {
       return NextResponse.json(
-        { error: "Failed to fetch campaign" },
-        { status: response.status }
+        { error: "Failed to fetch campaign", details: lastError.body },
+        { status: lastError.status }
       );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(
+      { error: "Failed to fetch campaign" },
+      { status: 502 }
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("[Campaign] Fetch error:", errorMessage);

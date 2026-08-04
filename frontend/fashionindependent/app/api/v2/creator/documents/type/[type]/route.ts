@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost/mirrormefashion/api/v2"
+import { BACKEND_URL } from "@/config"
 
 export async function DELETE(
   request: NextRequest,

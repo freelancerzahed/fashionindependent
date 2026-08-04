@@ -38,7 +38,7 @@ export default function SiteMapPage() {
       title: "Creators",
       links: [
         { name: "Launch a Campaign", href: "/launch-campaign" },
-        { name: "Creator Portal", href: "/creator-portal" },
+        { name: "Creative Portal", href: "/creative-portal" },
       ],
     },
     {

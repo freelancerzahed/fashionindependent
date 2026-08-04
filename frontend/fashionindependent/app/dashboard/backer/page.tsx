@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -15,15 +15,23 @@ import { BACKEND_URL } from "@/config"
 export default function BackerOverviewPage() {
   const { user, token } = useAuth()
   const [pledges, setPledges] = useState<any[]>([])
-  const [stats, setStats] = useState({
-    totalPledged: 0,
-    activePledges: 0,
-    completedOrders: 0,
-    savedCampaigns: 0,
-  })
-  const [recentPledges, setRecentPledges] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const stats = useMemo(() => {
+    const totalPledged = pledges.reduce((sum: number, p: any) => sum + p.pledgeAmount * p.quantity, 0)
+    const activePledges = pledges.filter((p: any) => p.daysRemaining > 0).length
+    const completedOrders = pledges.filter((p: any) => p.daysRemaining === 0).length
+
+    return {
+      totalPledged,
+      activePledges,
+      completedOrders,
+      savedCampaigns: 0,
+    }
+  }, [pledges])
+
+  const recentPledges = useMemo(() => pledges.slice(0, 3), [pledges])
 
   const fetchBackerData = useCallback(async () => {
     if (!token) return
@@ -32,8 +40,8 @@ export default function BackerOverviewPage() {
       setLoading(true)
       setError(null)
 
-      // Fetch pledges
-      const pledgesResponse = await fetch(`${BACKEND_URL}/pledge/user`, {
+      // Fetch pledges through the local Next.js API proxy
+      const pledgesResponse = await fetch("/api/pledge/user", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -62,19 +70,6 @@ export default function BackerOverviewPage() {
         }))
 
         setPledges(pledgesList)
-        setRecentPledges(pledgesList.slice(0, 3))
-
-        // Calculate stats
-        const totalPledged = pledgesList.reduce((sum: number, p: any) => sum + p.pledgeAmount * p.quantity, 0)
-        const activePledges = pledgesList.filter((p: any) => p.daysRemaining > 0).length
-        const completedOrders = pledgesList.filter((p: any) => p.daysRemaining === 0).length
-
-        setStats({
-          totalPledged,
-          activePledges,
-          completedOrders,
-          savedCampaigns: 0, // Would need separate API call
-        })
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load data"
@@ -102,72 +97,82 @@ export default function BackerOverviewPage() {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-3 pb-20 sm:space-y-4 sm:pb-0">
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex flex-col sm:flex-row items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 sm:mt-0.5 mt-1" />
-          <div className="flex-1">
-            <p className="font-semibold text-red-900 text-sm sm:text-base">Error loading pledges</p>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 text-red-600 hover:text-red-700 text-xs sm:text-sm"
-              onClick={handleRetry}
-            >
-              Try Again
-            </Button>
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col items-start gap-3 sm:flex-row">
+            <AlertCircle className="mt-1 h-5 w-5 flex-shrink-0 text-red-600" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-900 sm:text-base">Error loading pledges</p>
+              <p className="mt-1 text-sm text-red-700">{error}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 text-xs text-red-600 hover:text-red-700 sm:text-sm"
+                onClick={handleRetry}
+              >
+                Try Again
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Header - No Background */}
-      <div className="pt-2">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 text-slate-900">Backer Dashboard</h1>
-        <p className="text-sm sm:text-base text-slate-600">Manage your pledges and track your investments</p>
+      {/* Header - mobile app style */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Overview</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Backer Dashboard</h1>
+          </div>
+          <div className="rounded-2xl bg-slate-900 px-3 py-2 text-center text-[11px] font-semibold text-white shadow-sm">
+            Native
+          </div>
+        </div>
+        <p className="mt-2 text-sm text-slate-600 sm:text-base">Manage your pledges and track your investments</p>
       </div>
 
-      {/* Stats Cards - Improved Design */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="border-0 bg-gradient-to-br from-slate-50 to-white shadow-sm hover:shadow-md transition-all duration-200">
-          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-            <div className="text-xs sm:text-sm text-slate-600 font-medium mb-2">Total Pledged</div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900">${stats.totalPledged.toLocaleString()}</div>
-            <p className="text-xs text-slate-500 mt-2">Across campaigns</p>
+      {/* Stats Cards - mobile-first 2-column native app tiles */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-4">
+        <Card className="rounded-3xl border-0 bg-white shadow-[0_10px_30px_-16px_rgba(15,23,42,0.35)]">
+          <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-[11px]">Total Pledged</div>
+            <div className="mt-2 text-lg font-bold text-slate-900 sm:text-2xl">${stats.totalPledged.toLocaleString()}</div>
+            <p className="mt-2 text-[11px] text-slate-500">Across campaigns</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-blue-50 to-white shadow-sm hover:shadow-md transition-all duration-200">
-          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-            <div className="text-xs sm:text-sm text-blue-600 font-medium mb-2">Active Pledges</div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900">{stats.activePledges}</div>
-            <p className="text-xs text-slate-500 mt-2">Supporting</p>
+        <Card className="rounded-3xl border-0 bg-blue-50 shadow-[0_10px_30px_-16px_rgba(59,130,246,0.35)]">
+          <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-600 sm:text-[11px]">Active Pledges</div>
+            <div className="mt-2 text-lg font-bold text-slate-900 sm:text-2xl">{stats.activePledges}</div>
+            <p className="mt-2 text-[11px] text-slate-500">Supporting</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-green-50 to-white shadow-sm hover:shadow-md transition-all duration-200">
-          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-            <div className="text-xs sm:text-sm text-green-600 font-medium mb-2">Completed Orders</div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900">{stats.completedOrders}</div>
-            <p className="text-xs text-slate-500 mt-2">Delivered</p>
+        <Card className="rounded-3xl border-0 bg-emerald-50 shadow-[0_10px_30px_-16px_rgba(16,185,129,0.35)]">
+          <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-600 sm:text-[11px]">Completed</div>
+            <div className="mt-2 text-lg font-bold text-slate-900 sm:text-2xl">{stats.completedOrders}</div>
+            <p className="mt-2 text-[11px] text-slate-500">Delivered</p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 bg-gradient-to-br from-purple-50 to-white shadow-sm hover:shadow-md transition-all duration-200">
-          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-            <div className="text-xs sm:text-sm text-purple-600 font-medium mb-2">Saved Campaigns</div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900">{stats.savedCampaigns}</div>
-            <p className="text-xs text-slate-500 mt-2">Watchlist</p>
+        <Card className="rounded-3xl border-0 bg-violet-50 shadow-[0_10px_30px_-16px_rgba(139,92,246,0.35)]">
+          <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-600 sm:text-[11px]">Saved</div>
+            <div className="mt-2 text-lg font-bold text-slate-900 sm:text-2xl">{stats.savedCampaigns}</div>
+            <p className="mt-2 text-[11px] text-slate-500">Watchlist</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Pledges Section */}
       <div className="space-y-3 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900">Recent Pledges</h2>
-          <Button variant="outline" size="sm" asChild className="text-xs sm:text-sm border-slate-200 hover:bg-slate-50">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-slate-900 sm:text-2xl">Recent Pledges</h2>
+          <Button variant="outline" size="sm" asChild className="border-slate-200 text-xs hover:bg-slate-50 sm:text-sm">
             <Link href="/dashboard/pledges">View All</Link>
           </Button>
         </div>
@@ -175,31 +180,25 @@ export default function BackerOverviewPage() {
         {recentPledges.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {recentPledges.map((pledge) => (
-              <Card key={pledge.id} className="border-0 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden bg-white">
+              <Card key={pledge.id} className="overflow-hidden rounded-3xl border-0 bg-white shadow-[0_14px_36px_-20px_rgba(15,23,42,0.45)]">
                 <div className="flex flex-col sm:flex-row">
                   {pledge.image && (
-                    <div className="w-full sm:w-48 h-40 sm:h-48 bg-slate-100 flex-shrink-0 overflow-hidden">
+                    <div className="h-40 w-full overflow-hidden bg-slate-100 sm:h-auto sm:w-40 sm:flex-shrink-0">
                       <img
                         src={pledge.image}
                         alt={pledge.campaignTitle}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        className="h-full w-full object-cover"
                       />
                     </div>
                   )}
-                  <div className="flex-1 p-4 sm:p-6 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold mb-1 sm:mb-2 line-clamp-2 text-slate-900">{pledge.campaignTitle}</h3>
-                      <p className="text-sm sm:text-base text-slate-600 mb-3 sm:mb-4">by <span className="font-medium text-slate-900">{pledge.creatorName}</span></p>
-                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 mb-3 sm:mb-4">
-                        <div className="inline-block">
-                          <span className="text-sm sm:text-base font-bold text-slate-900">${(pledge.pledgeAmount * pledge.quantity).toLocaleString()}</span>
-                        </div>
-                        <div className="inline-block text-xs sm:text-sm text-slate-600">
-                          {pledge.daysRemaining > 0 
-                            ? `${pledge.daysRemaining} days remaining` 
-                            : "Completed"}
-                        </div>
-                      </div>
+                  <div className="flex-1 p-4 sm:p-5">
+                    <h3 className="text-base font-bold text-slate-900 sm:text-lg">{pledge.campaignTitle}</h3>
+                    <p className="mt-1 text-sm text-slate-600">by <span className="font-semibold text-slate-900">{pledge.creatorName}</span></p>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                      <span className="font-bold text-slate-900">${(pledge.pledgeAmount * pledge.quantity).toLocaleString()}</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                        {pledge.daysRemaining > 0 ? `${pledge.daysRemaining} days remaining` : "Completed"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -207,43 +206,43 @@ export default function BackerOverviewPage() {
             ))}
           </div>
         ) : (
-          <Card className="border-0 shadow-sm p-6 sm:p-8 text-center bg-gradient-to-br from-slate-50 to-white">
-            <p className="text-sm sm:text-base text-slate-600 mb-4">No active pledges yet</p>
-            <Link href="/discover">
-              <Button size="sm" className="text-xs sm:text-sm bg-slate-900 hover:bg-slate-800">Discover Campaigns</Button>
+          <Card className="rounded-3xl border-0 bg-white p-6 text-center shadow-[0_14px_36px_-20px_rgba(15,23,42,0.45)] sm:p-8">
+            <p className="text-sm text-slate-600 sm:text-base">No active pledges yet</p>
+            <Link href="/discover" className="mt-4 inline-block">
+              <Button size="sm" className="bg-slate-900 text-xs hover:bg-slate-800 sm:text-sm">Discover Campaigns</Button>
             </Link>
           </Card>
         )}
       </div>
 
       {/* Quick Actions */}
-      <Card className="border-0 shadow-sm bg-white">
-        <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
-          <h2 className="text-lg sm:text-xl font-bold mb-4 text-slate-900">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+      <Card className="rounded-3xl border-0 bg-white shadow-[0_14px_36px_-20px_rgba(15,23,42,0.45)]">
+        <CardContent className="px-4 py-4 sm:px-5 sm:py-5">
+          <h2 className="text-base font-bold text-slate-900 sm:text-xl">Quick Actions</h2>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3">
             <Link href="/discover">
-              <Button className="w-full text-xs sm:text-sm border-slate-200 hover:bg-slate-50" variant="outline">
-                Discover Campaigns
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                Discover
               </Button>
             </Link>
             <Link href="/dashboard/backer/cart">
-              <Button className="w-full text-xs sm:text-sm border-slate-200 hover:bg-slate-50" variant="outline">
-                Shopping Cart
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                Cart
               </Button>
             </Link>
             <Link href="/dashboard/favorites">
-              <Button className="w-full text-xs sm:text-sm border-slate-200 hover:bg-slate-50" variant="outline">
-                View Favorites
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                Favorites
               </Button>
             </Link>
             <Link href="/dashboard/pledges">
-              <Button className="w-full text-xs sm:text-sm border-slate-200 hover:bg-slate-50" variant="outline">
-                My Pledges
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                Pledges
               </Button>
             </Link>
             <Link href="/dashboard/account">
-              <Button className="w-full text-xs sm:text-sm border-slate-200 hover:bg-slate-50" variant="outline">
-                Account Settings
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                Account
               </Button>
             </Link>
           </div>

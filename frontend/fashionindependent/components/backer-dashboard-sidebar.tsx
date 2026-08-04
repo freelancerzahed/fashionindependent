@@ -19,6 +19,8 @@ import { Heart, History, Settings, LogOut, User, ChevronDown, ShoppingCart, Brie
 import { useState, useEffect } from "react"
 import { RoleTogglePill } from "@/components/role-toggle-pill"
 
+const DASHBOARD_ROLE_EVENT = "dashboard-role-changed"
+
 export function BackerDashboardSidebar() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
@@ -26,8 +28,8 @@ export function BackerDashboardSidebar() {
   const [activeRole, setActiveRole] = useState<"creator" | "backer" | null>(null)
 
   // Check if user has both roles
-  const hasCreatorRole = user?.role === "creator" || user?.roles?.includes("creator")
-  const hasBackerRole = user?.role === "backer" || user?.roles?.includes("backer")
+  const hasCreatorRole = user?.role === "creator" || Boolean(user?.roles?.includes("creator"))
+  const hasBackerRole = user?.role === "backer" || Boolean(user?.roles?.includes("backer"))
   const hasBothRoles = hasCreatorRole && hasBackerRole
 
   const backerTabs = [
@@ -55,7 +57,8 @@ export function BackerDashboardSidebar() {
     setActiveRole(newRole)
     if (typeof window !== "undefined") {
       localStorage.setItem("dashboardActiveRole", newRole)
-      window.location.reload()
+      window.dispatchEvent(new CustomEvent(DASHBOARD_ROLE_EVENT, { detail: newRole }))
+      router.push(newRole === "creator" ? "/dashboard" : "/dashboard/backer")
     }
   }
 
@@ -68,6 +71,20 @@ export function BackerDashboardSidebar() {
         setActiveRole("backer")
       }
     }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const syncActiveRole = (event: Event) => {
+      const role = (event as CustomEvent).detail
+      if (role === "creator" || role === "backer") {
+        setActiveRole(role)
+      }
+    }
+
+    window.addEventListener(DASHBOARD_ROLE_EVENT, syncActiveRole as EventListener)
+    return () => window.removeEventListener(DASHBOARD_ROLE_EVENT, syncActiveRole as EventListener)
   }, [])
 
   if (!user) return null
@@ -85,7 +102,7 @@ export function BackerDashboardSidebar() {
     : null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 sticky top-4 space-y-6 border border-neutral-100">
+    <div className="w-full min-w-0 overflow-hidden bg-white rounded-lg shadow-sm p-4 sm:p-6 md:sticky md:top-4 space-y-6 border border-neutral-100">
       {/* User Profile Card */}
       <div className="pb-6 border-b border-neutral-200">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -140,7 +157,7 @@ export function BackerDashboardSidebar() {
         </div>
 
         {/* Role Toggle Pill */}
-        {activeRole && (
+        {hasBothRoles && activeRole && (
           <RoleTogglePill 
             activeRole={activeRole} 
             onRoleChange={handleSwitchRole}

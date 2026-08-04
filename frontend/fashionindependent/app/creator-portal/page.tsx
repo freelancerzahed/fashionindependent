@@ -9,7 +9,7 @@ export default function CreatorPortalPage() {
       <section className="py-12 bg-neutral-50">
         <div className="container mx-auto px-4">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Creator Portal</h1>
+            <h1 className="text-3xl font-bold mb-2">Creative Portal</h1>
             <p className="text-neutral-600">Manage your campaigns and track your success</p>
           </div>
 

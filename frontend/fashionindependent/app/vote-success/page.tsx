@@ -1,6 +1,7 @@
 "use client"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { BACKEND_URL } from "@/config"
 import { Share2, Heart, MessageCircle, Mail } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState as useStateHook } from "react"
@@ -38,10 +39,8 @@ export default function VoteSuccessPage() {
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL
-
         // Fetch current campaign details
-        const campaignRes = await fetch(`${apiUrl}/campaign/${campaignId}`, {
+        const campaignRes = await fetch(`${BACKEND_URL}/campaign/${campaignId}`, {
           method: "GET",
           headers: {
             "Accept": "application/json",
@@ -79,7 +78,7 @@ export default function VoteSuccessPage() {
         }
 
         // Fetch recently closing campaigns (top 3-4 active campaigns with lowest days remaining)
-        const campaignsRes = await fetch(`${apiUrl}/active`, {
+        const campaignsRes = await fetch(`${BACKEND_URL}/active`, {
           method: "GET",
           headers: {
             "Accept": "application/json",

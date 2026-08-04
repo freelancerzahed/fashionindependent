@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, Upload, X, HelpCircle } from "lucide-react"
 import type { ProductImage, ProductSize } from "@/lib/types/campaign"
 
@@ -26,12 +27,15 @@ export interface MaterialItem {
 export interface CampaignFormData {
   productName: string
   productDescription: string
+  productType: "product" | "collection"
   materials: MaterialItem[]
   colors: string[]
   sizes: ProductSize[]
   productImages: ProductImage[]
   projectDuration: number
   upvoteGoal: number
+  fundingGoal: number
+  salePrice: number
   questionnaire: {
     previousSalesChannels: string[]
     existingInventory: string | null
@@ -42,6 +46,24 @@ export interface CampaignFormData {
 }
 
 export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onBack, initialData }: CampaignLaunchFormProps) {
+  const PRODUCT_NAME_LIMIT = 30
+  const PRODUCT_TYPE_OPTIONS = [
+    { value: "product", label: "Product" },
+    { value: "collection", label: "Collection" },
+  ] as const
+  const MATERIAL_OPTIONS = [
+    "Cotton",
+    "Polyester",
+    "Linen",
+    "Silk",
+    "Wool",
+    "Nylon",
+    "Denim",
+    "Leather",
+    "Velvet",
+    "Other",
+  ]
+
   // Standard sizes with their classifications
   const STANDARD_SIZES = [
     { classification: "US 0 - 2 (Extra Small)", sizeKey: "xs" },
@@ -53,6 +75,7 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
   const defaultFormData: CampaignFormData = {
     productName: "",
     productDescription: "",
+    productType: "product",
     materials: [{ name: "", percentage: "" }],
     colors: [""],
     sizes: STANDARD_SIZES.map(size => ({
@@ -63,6 +86,8 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
     productImages: [],
     projectDuration: 14,
     upvoteGoal: 5000,
+    fundingGoal: 5000,
+    salePrice: 0,
     questionnaire: {
       previousSalesChannels: [],
       existingInventory: null,
@@ -93,10 +118,24 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
     }
   }, [initialData?.productImages])
 
-  const handleTextInputChange = (field: string, value: string) => {
+  const handleTextInputChange = (field: "productName" | "productDescription", value: string) => {
+    const nextValue = field === "productName" ? value.slice(0, PRODUCT_NAME_LIMIT) : value
+
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: nextValue,
+    }))
+  }
+
+  const handleNumericInputChange = (
+    field: "projectDuration" | "upvoteGoal" | "fundingGoal" | "salePrice",
+    value: string
+  ) => {
+    const parsed = Number(value)
+
+    setFormData((prev) => ({
+      ...prev,
+      [field]: Number.isFinite(parsed) ? parsed : 0,
     }))
   }
 
@@ -294,8 +333,8 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
       newErrors.productName = "Product name is required"
     } else if (formData.productName.trim().length < 4) {
       newErrors.productName = "Product name must be at least 4 characters"
-    } else if (formData.productName.trim().length > 30) {
-      newErrors.productName = "Product name cannot exceed 30 characters"
+    } else if (formData.productName.trim().length > PRODUCT_NAME_LIMIT) {
+      newErrors.productName = `Product name cannot exceed ${PRODUCT_NAME_LIMIT} characters`
     }
 
     if (!formData.productDescription.trim()) {
@@ -372,6 +411,14 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
       newErrors.projectDuration = "Project duration must be between 7 and 30 days"
     }
 
+    if (!formData.fundingGoal || formData.fundingGoal <= 0) {
+      newErrors.fundingGoal = "Funding goal is required"
+    }
+
+    if (formData.salePrice && formData.salePrice <= 0) {
+      newErrors.salePrice = "Sale price must be greater than 0"
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -415,6 +462,9 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
   const frontImage = formData.productImages.find((img) => img.type === "front")
   const backImage = formData.productImages.find((img) => img.type === "back")
   const additionalImages = formData.productImages.filter((img) => img.type === "additional")
+  const productImageHelperText = formData.productType === "collection"
+    ? "Upload the main photo for your collection."
+    : "Upload the main photo for your product."
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
@@ -424,6 +474,38 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
           <p className="text-red-700">{errors.submit}</p>
         </Card>
       )}
+
+      {/* Your Products */}
+      <Card className="p-6 space-y-4">
+        <h3 className="text-lg font-semibold">Your Products</h3>
+        <p className="text-sm text-muted-foreground">
+          Select whether you are launching a single product or an entire collection.
+        </p>
+
+        <div className="space-y-2">
+          <Label htmlFor="productType">Product / Collection</Label>
+          <Select
+            value={formData.productType}
+            onValueChange={(value) =>
+              setFormData((prev) => ({
+                ...prev,
+                productType: value as "product" | "collection",
+              }))
+            }
+          >
+            <SelectTrigger id="productType" className="w-full">
+              <SelectValue placeholder="Select an option" />
+            </SelectTrigger>
+            <SelectContent>
+              {PRODUCT_TYPE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
 
       {/* Product Basic Info */}
       <Card className="p-6 space-y-4">
@@ -438,8 +520,11 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
             onChange={(e) => handleTextInputChange("productName", e.target.value)}
             className={errors.productName ? "border-red-500" : ""}
             minLength={4}
-            maxLength={30}
+            maxLength={PRODUCT_NAME_LIMIT}
           />
+          <p className="text-xs text-muted-foreground">
+            {formData.productName.length}/{PRODUCT_NAME_LIMIT} characters
+          </p>
           {errors.productName && <p className="text-sm text-red-600">{errors.productName}</p>}
         </div>
 
@@ -468,13 +553,24 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
           <div key={index} className="flex gap-3 items-end">
             <div className="flex-1 space-y-2">
               <Label htmlFor={`material-name-${index}`}>Material {index + 1}</Label>
-              <Input
-                id={`material-name-${index}`}
-                placeholder="e.g., Cotton, Polyester"
-                value={material.name}
-                onChange={(e) => handleMaterialChange(index, "name", e.target.value)}
-                className={errors[`materialName-${index}`] || (errors.materials && !material.name.trim()) ? "border-red-500" : ""}
-              />
+              <Select
+                value={material.name || undefined}
+                onValueChange={(value) => handleMaterialChange(index, "name", value)}
+              >
+                <SelectTrigger
+                  id={`material-name-${index}`}
+                  className={errors[`materialName-${index}`] || (errors.materials && !material.name.trim()) ? "border-red-500 w-full" : "w-full"}
+                >
+                  <SelectValue placeholder="Select a material" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MATERIAL_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {errors[`materialName-${index}`] && (
                 <p className="text-sm text-red-600">{errors[`materialName-${index}`]}</p>
               )}
@@ -616,7 +712,7 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
       <Card className="p-6 space-y-4">
         <h3 className="text-lg font-semibold">Product Images</h3>
         <p className="text-sm text-muted-foreground">
-          Front and back images are required. Minimum size: 1000x1000px. You can add more images later.
+          {productImageHelperText}
         </p>
 
         {/* Front Image */}
@@ -720,6 +816,46 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
         {errors.imageUpload && <p className="text-sm text-red-600">{errors.imageUpload}</p>}
       </Card>
 
+      {/* Funding and Sale Price */}
+      <Card className="p-6 space-y-4">
+        <h3 className="text-lg font-semibold">Funding & Limited Drop Price</h3>
+        <p className="text-sm text-muted-foreground">
+          Your funding goal is the amount needed to make the product. The sale price is what customers will pay after the campaign succeeds and the product becomes a limited drop.
+        </p>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="fundingGoal">Funding Goal ($)</Label>
+            <Input
+              id="fundingGoal"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="e.g. 5000"
+              value={formData.fundingGoal || ""}
+              onChange={(e) => handleNumericInputChange("fundingGoal", e.target.value)}
+              className={errors.fundingGoal ? "border-red-500" : ""}
+            />
+            {errors.fundingGoal && <p className="text-sm text-red-600">{errors.fundingGoal}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="salePrice">Limited Drop Sale Price ($)</Label>
+            <Input
+              id="salePrice"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="e.g. 89"
+              value={formData.salePrice || ""}
+              onChange={(e) => handleNumericInputChange("salePrice", e.target.value)}
+              className={errors.salePrice ? "border-red-500" : ""}
+            />
+            {errors.salePrice && <p className="text-sm text-red-600">{errors.salePrice}</p>}
+          </div>
+        </div>
+      </Card>
+
       {/* Vote Goal */}
       <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2">
@@ -786,7 +922,7 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
             min="7"
             max="20"
             value={formData.projectDuration}
-            onChange={(e) => handleTextInputChange("projectDuration", e.target.value)}
+            onChange={(e) => handleNumericInputChange("projectDuration", e.target.value)}
             className="w-full"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -944,20 +1080,20 @@ export function CampaignLaunchForm({ onSubmit, onPublish, isLoading = false, onB
       </Card>
 
       {/* Submit Button */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="flex flex-col gap-4 md:flex-row">
         {onBack && (
-          <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="h-12">
+          <Button type="button" variant="outline" onClick={onBack} disabled={isLoading} className="flex-1 h-12">
             Back
           </Button>
         )}
         <Button type="submit" disabled={isLoading} className="flex-1 h-12">
-          {isLoading ? "Saving..." : "Save as Draft"}
+          {isLoading ? "Saving..." : "Submit"}
         </Button>
         {onPublish && (
-          <Button 
-            type="button" 
-            onClick={handlePublish} 
-            disabled={isLoading} 
+          <Button
+            type="button"
+            onClick={handlePublish}
+            disabled={isLoading}
             className="flex-1 h-12 bg-green-600 hover:bg-green-700"
           >
             {isLoading ? "Publishing..." : "Publish Campaign"}

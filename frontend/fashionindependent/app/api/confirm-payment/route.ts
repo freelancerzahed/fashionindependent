@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { proxyStripeRequest } from "@/lib/stripe-backend-proxy"
 
 interface PaymentConfirmationRequest {
   paymentIntentId?: string
@@ -7,6 +8,12 @@ interface PaymentConfirmationRequest {
   quantity?: number
   email?: string
   amount?: number
+  firstName?: string
+  lastName?: string
+  address?: string
+  city?: string
+  state?: string
+  zip?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -30,38 +37,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Amount must be a positive number" }, { status: 400 })
     }
 
-    try {
-      // Generate unique order ID
-      const orderId = `TFI-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`
+    const { status, body: responseBody } = await proxyStripeRequest("confirm-payment", {
+      paymentIntentId,
+      campaignId,
+      pledgeOptionId,
+      quantity: quantity || 1,
+      email,
+      amount,
+      ...body,
+    })
 
-      // In production, verify with Stripe API and save to database
-      const confirmation = {
-        id: `charge_${Math.random().toString(36).substr(2, 9)}`,
-        paymentIntentId,
-        status: "succeeded",
-        amount: Math.round(amount * 100),
-        currency: "usd",
-        email,
-        campaignId,
-        pledgeOptionId,
-        quantity: quantity || 1,
-        createdAt: new Date().toISOString(),
-        orderId,
-      }
-
-      console.log("[v0] Payment confirmed:", { orderId, amount, email })
-      return NextResponse.json(confirmation)
-    } catch (dbError) {
-      const errorMessage = dbError instanceof Error ? dbError.message : "Database error"
-      console.error("[v0] Database error during payment confirmation:", errorMessage)
-      return NextResponse.json(
-        { error: "Failed to save payment confirmation. Please contact support." },
-        { status: 503 },
-      )
-    }
+    return NextResponse.json(responseBody, { status })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
-    console.error("[v0] Payment confirmation error:", errorMessage)
+    console.error("[Stripe] Confirm Payment Error:", errorMessage)
     return NextResponse.json({ error: "Failed to confirm payment. Please try again." }, { status: 500 })
   }
 }

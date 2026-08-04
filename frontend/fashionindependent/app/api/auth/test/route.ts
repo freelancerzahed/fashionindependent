@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { BACKEND_URL } from "@/config"
 
 /**
  * Debug endpoint to test authentication token directly
@@ -17,8 +18,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Call backend to test the token
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost/mirrormefashion/api/v2"
-    const testUrl = `${backendUrl}/auth/test`
+    const testUrl = `${BACKEND_URL}/auth/test`
 
     const response = await fetch(testUrl, {
       method: "GET",
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       {
         debug: true,
         tokenSent: !!authHeader,
-        backendUrl,
+        backendUrl: BACKEND_URL,
         backendStatus: response.status,
         backendResponse: data.substring(0, 500),
       },

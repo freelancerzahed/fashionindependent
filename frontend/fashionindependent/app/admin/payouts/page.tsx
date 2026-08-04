@@ -37,7 +37,7 @@ export default function AdminPayoutsPage() {
   const pieData = [
     { name: "Platform Fees", value: totalPlatformFees },
     { name: "Manufacturing Costs", value: totalManufacturingCosts },
-    { name: "Creator Payouts", value: totalPayouts },
+    { name: "Creative Payouts", value: totalPayouts },
   ]
 
   const COLORS = ["#3b82f6", "#ef4444", "#10b981"]
@@ -62,7 +62,7 @@ export default function AdminPayoutsPage() {
               <p className="text-3xl font-bold text-red-600">${totalManufacturingCosts.toFixed(2)}</p>
             </Card>
             <Card className="p-6">
-              <p className="text-sm text-muted-foreground">Creator Payouts</p>
+              <p className="text-sm text-muted-foreground">Creative Payouts</p>
               <p className="text-3xl font-bold text-green-600">${totalPayouts.toFixed(2)}</p>
             </Card>
           </div>
@@ -124,7 +124,7 @@ export default function AdminPayoutsPage() {
                     <th className="text-right py-3 px-4">Donations</th>
                     <th className="text-right py-3 px-4">Platform Fee</th>
                     <th className="text-right py-3 px-4">Manufacturing</th>
-                    <th className="text-right py-3 px-4">Creator Payout</th>
+                    <th className="text-right py-3 px-4">Creative Payout</th>
                     <th className="text-left py-3 px-4">Status</th>
                   </tr>
                 </thead>

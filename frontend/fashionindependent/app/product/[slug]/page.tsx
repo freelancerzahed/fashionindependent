@@ -12,10 +12,12 @@ interface ProductDetailsPageProps {
   }>
 }
 
+import { BACKEND_URL } from "@/config"
+
 async function fetchProductDetails(slug: string) {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/products/${slug}/1`,
+      `${BACKEND_URL}/products/${slug}/1`,
       {
         next: { revalidate: 3600 },
         headers: { Accept: "application/json" },

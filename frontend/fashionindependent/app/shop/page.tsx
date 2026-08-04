@@ -1,5 +1,7 @@
 import { Suspense } from "react"
 import { ShopPageClient } from "@/components/shop-page-client"
+import { getCampaignPrice } from "@/lib/campaign-pricing"
+import { BACKEND_URL } from "@/config"
 
 export const revalidate = 3600 // ISR: revalidate every hour
 
@@ -13,6 +15,37 @@ interface ShopPageProps {
   }>
 }
 
+function resolveCampaignImage(productImages: any) {
+  if (!productImages || !Array.isArray(productImages) || productImages.length === 0) {
+    return '/placeholder.svg'
+  }
+
+  const firstImage = productImages[0]
+  const imagePath = typeof firstImage === 'string'
+    ? firstImage
+    : firstImage?.path || firstImage?.url || ''
+
+  if (!imagePath) {
+    return '/placeholder.svg'
+  }
+
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    const parsed = new URL(imagePath)
+    const pathname = parsed.pathname
+    if (pathname.includes('/storage/')) {
+      return `/api/storage/${pathname.substring(pathname.indexOf('/storage/') + 9)}`
+    }
+    return pathname
+  }
+
+  const normalizedPath = imagePath.replace(/^\/+/, '')
+  if (normalizedPath.includes('storage/')) {
+    return `/api/storage/${normalizedPath.substring(normalizedPath.indexOf('storage/') + 8)}`
+  }
+
+  return normalizedPath.startsWith('/') ? normalizedPath : `/api/storage/${normalizedPath}`
+}
+
 async function fetchProducts(
   search?: string,
   category?: string,
@@ -22,22 +55,18 @@ async function fetchProducts(
 ) {
   try {
     const params = new URLSearchParams()
-    
+
     if (search) params.append('search', search)
+    if (category) params.append('category', category)
     params.append('page', page || '1')
     params.append('per_page', '12')
 
-    // Build the correct endpoint based on category
-    let url = `${process.env.NEXT_PUBLIC_API_URL}/products`
-    if (category) {
-      url += `/category/${category}`
-    }
-    url += `?${params.toString()}`
+    const url = `${BACKEND_URL}/campaign/active?${params.toString()}`
 
     console.log('[ShopPage] Fetching from:', url)
 
     const response = await fetch(url, {
-      next: { 
+      next: {
         revalidate: 3600,
         tags: ['products']
       },
@@ -48,7 +77,6 @@ async function fetchProducts(
     })
 
     if (!response.ok) {
-      // Try to get error details
       const errorText = await response.text()
       console.error('[ShopPage] API error response:', errorText)
       throw new Error(`API error: ${response.status}`)
@@ -58,33 +86,41 @@ async function fetchProducts(
     if (!contentType?.includes('application/json')) {
       const responseText = await response.text()
       console.error('[ShopPage] Non-JSON response:', responseText.substring(0, 200))
-      
-      // Check if it's a PHP error
+
       if (responseText.includes('<b>Warning</b>') || responseText.includes('Fatal error')) {
         console.error('[ShopPage] Backend PHP Error detected')
         throw new Error('Backend server error: Please check the server logs. Run: composer dump-autoload')
       }
-      
+
       throw new Error(`Expected JSON but got ${contentType}`)
     }
 
     const data = await response.json()
-    console.log('[ShopPage] API response:', data)
-    return data
+    const campaigns = Array.isArray(data.data) ? data.data : []
+
+    return {
+      status: true,
+      data: campaigns,
+      pagination: data.pagination || {
+        page: 1,
+        per_page: 12,
+        total: campaigns.length,
+        total_pages: 1,
+        has_more: false,
+      }
+    }
 
   } catch (error) {
     console.error('Error fetching products:', error)
     return {
       status: false,
       data: [],
-      meta: {
-        pagination: {
-          page: 1,
-          per_page: 12,
-          total: 0,
-          total_pages: 0,
-          has_more: false,
-        }
+      pagination: {
+        page: 1,
+        per_page: 12,
+        total: 0,
+        total_pages: 0,
+        has_more: false,
       }
     }
   }
@@ -102,7 +138,6 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     params.page
   )
 
-  // Extract pagination from API response (handles Laravel pagination format)
   let pagination = {
     page: 1,
     per_page: 12,
@@ -111,34 +146,43 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     has_more: false,
   }
 
-  // Laravel paginate() returns meta with current_page, last_page, total, per_page
-  if (productsResponse.meta) {
-    const meta = productsResponse.meta
+  if (productsResponse.pagination) {
+    const paginated = productsResponse.pagination
     pagination = {
-      page: meta.current_page || 1,
-      per_page: meta.per_page || 12,
-      total: meta.total || 0,
-      total_pages: meta.last_page || 0,
-      has_more: (meta.current_page || 1) < (meta.last_page || 0),
+      page: paginated.page || 1,
+      per_page: paginated.per_page || 12,
+      total: paginated.total || 0,
+      total_pages: paginated.total_pages || 0,
+      has_more: paginated.has_more || false,
     }
   }
 
-  // Transform API response from ProductMiniCollection resource
-  const initialProducts = (productsResponse.data || []).map((product: any) => ({
-    id: product.id,
-    slug: product.slug,
-    name: product.name,
-    title: product.name,
-    thumbnail_image: product.thumbnail_image || '/placeholder.svg',
-    image: product.thumbnail_image || '/placeholder.svg',
-    stroked_price: parseFloat(product.stroked_price || 0),
-    main_price: parseFloat(product.main_price || 0),
-    price: parseFloat(product.main_price || 0),
-    discount: product.discount || '0%',
-    rating: product.rating || 0,
-    sales: product.sales || 0,
-    description: product.description || '',
-  }))
+  const initialProducts = (productsResponse.data || [])
+    .filter((campaign: any) => campaign.is_funded)
+    .map((campaign: any) => {
+      const campaignPrice = getCampaignPrice(campaign)
+      return {
+        id: campaign.id,
+        slug: String(campaign.id),
+        name: campaign.product_name || campaign.title,
+        title: campaign.title,
+        thumbnail_image: resolveCampaignImage(campaign.product_images),
+        image: resolveCampaignImage(campaign.product_images),
+        stroked_price: 0,
+        main_price: campaignPrice,
+        price: campaignPrice,
+        discount: 'Limited Drop',
+        rating: Number(campaign.upvote_percentage || 0),
+        sales: Number(campaign.backer_count || 0),
+        description: campaign.description || '',
+        isCampaign: true,
+        availabilityLabel: 'Now Available',
+        statusLabel: 'This campaign has reached its goal and this product is now available for sale.',
+        href: `/checkout?campaignId=${campaign.id}&pledgeOptionId=buy-now&quantity=1`,
+        detailsHref: `/campaign/${campaign.id}`,
+        ctaLabel: 'Buy Now',
+      }
+    })
 
   return (
     <Suspense fallback={<ShopPageSkeleton />}>

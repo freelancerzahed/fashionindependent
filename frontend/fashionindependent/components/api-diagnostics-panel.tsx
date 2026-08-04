@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
+import { BACKEND_URL } from "@/config"
 import { logBackendConfig, runApiDiagnostics, testFileUpload } from "@/lib/api-diagnostics"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 
@@ -71,7 +72,7 @@ export function ApiDiagnosticsPanel() {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-neutral-600">Backend URL:</span>
-            <code className="bg-neutral-100 px-2 py-1 rounded text-xs">{process.env.NEXT_PUBLIC_API_URL}</code>
+            <code className="bg-neutral-100 px-2 py-1 rounded text-xs">{BACKEND_URL}</code>
           </div>
           <div className="flex justify-between">
             <span className="text-neutral-600">Authenticated:</span>
@@ -184,7 +185,7 @@ export function ApiDiagnosticsPanel() {
           <li>Make sure Laragon/Apache is running (check taskbar)</li>
           <li>Verify you are logged in (token should show above)</li>
           <li>Check browser console for detailed error messages</li>
-          <li>Ensure the API URL is correct: {process.env.NEXT_PUBLIC_API_URL}</li>
+          <li>Ensure the API URL is correct: {BACKEND_URL}</li>
         </ul>
       </div>
     </div>

@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DashboardStats } from "@/components/dashboard-stats"
 import { DashboardRecentCampaigns } from "@/components/dashboard-recent-campaigns"
 import { ArrowRight, AlertCircle, Loader2, ArrowLeft } from "lucide-react"
-import { BACKEND_URL } from "@/config"
+import { MobileTabs } from "@/components/mobile-tabs"
 
 export const dynamic = "force-dynamic"
 
@@ -40,25 +40,60 @@ const calculateStats = (campaigns: any[]) => {
   }
 }
 
+const normalizeCampaignList = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload
+
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.campaigns)) return payload.campaigns
+  if (Array.isArray(payload?.campaigns?.data)) return payload.campaigns.data
+  if (Array.isArray(payload?.data?.data)) return payload.data.data
+
+  return []
+}
+
 export default function DashboardPage() {
   const { user, token, isLoading } = useAuth()
   const router = useRouter()
   const { getConversionMetrics } = useAnalytics()
 
-  // Redirect backers to their dashboard
+  const hasCreatorRole = user?.role === "creator" || user?.roles?.includes("creator")
+  const hasBackerRole = user?.role === "backer" || user?.roles?.includes("backer")
+
+  // Redirect backers to their dashboard only when they do not have creator access
   useEffect(() => {
-    if (!isLoading && user?.role === "backer") {
-      router.push("/dashboard/backer")
+    if (!isLoading && user && !hasCreatorRole && hasBackerRole) {
+      router.replace("/dashboard/backer")
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, router, hasCreatorRole, hasBackerRole])
 
   // Creator state
   const [campaigns, setCampaigns] = useState<any[]>([])
-  const [creatorStats, setCreatorStats] = useState<ReturnType<typeof calculateStats> | null>(null)
+  const initialCreatorStats: ReturnType<typeof calculateStats> = {
+    totalCampaigns: 0,
+    totalEarnings: 0,
+    totalBackers: 0,
+    activeCampaigns: 0,
+    activeSales: 0,
+    activeShowcases: 0,
+    recentlyClosed: 0,
+    totalDonations: 0,
+    outboundBounces: 0,
+  }
+  const [creatorStats, setCreatorStats] = useState<ReturnType<typeof calculateStats>>(initialCreatorStats)
   const [creatorLoading, setCreatorLoading] = useState(true)
   const [creatorError, setCreatorError] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [activeView, setActiveView] = useState("overview")
+
+  const dashboardTabs = useMemo(
+    () => [
+      { id: "overview", label: "Overview" },
+      { id: "growth", label: "Growth" },
+      { id: "campaigns", label: "Campaigns" },
+    ],
+    []
+  )
 
   // Cache for campaigns to enable progressive loading
   const [cachedCampaigns, setCachedCampaigns] = useState<any[]>([])
@@ -68,28 +103,27 @@ export default function DashboardPage() {
     if (campaigns.length > 0) {
       return calculateStats(campaigns)
     }
-    // Use cached calculation if available
-    return cachedCampaigns.length > 0 ? calculateStats(cachedCampaigns) : null
+    if (cachedCampaigns.length > 0) {
+      return calculateStats(cachedCampaigns)
+    }
+    return initialCreatorStats
   }, [campaigns, cachedCampaigns])
 
   // Update creator stats when memoized stats change
   useEffect(() => {
-    if (memoizedStats) {
-      setCreatorStats(memoizedStats)
-    }
+    setCreatorStats(memoizedStats)
   }, [memoizedStats])
 
   // Fetch creator campaigns and stats
   const fetchCreatorData = useCallback(async (showLoading = true) => {
-    if (!token || user?.role !== "creator") return
+    if (!token || !hasCreatorRole) return
 
     if (showLoading) setCreatorLoading(true)
     else setIsRefreshing(true)
     setCreatorError("")
-    
+
     try {
-      // Parallel fetch - could be extended to fetch multiple endpoints
-      const response = await fetch(`${BACKEND_URL}/campaign`, {
+      const response = await fetch(`/api/campaign`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -98,31 +132,28 @@ export default function DashboardPage() {
       })
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch campaigns: ${response.statusText}`)
+        throw new Error(`Failed to fetch campaigns: ${response.statusText || response.status}`)
       }
 
       const data = await response.json()
-      
-      // Handle both response formats
-      let campaignsData = data.data || (data.campaigns && data.campaigns.data) || []
-      
-      if (data.status && Array.isArray(campaignsData)) {
-        // Map API response to component format
-        const mappedCampaigns = campaignsData.map((c: any) => ({
-          id: c.id,
-          title: c.title,
-          fundedAmount: c.funded_amount || 0,
-          fundingGoal: c.funding_goal || 0,
-          backers: c.backers_count || 0,
-          upvoteGoal: c.upvote_goal || 0,
-          upvoteCount: c.upvote_count || 0,
-          status: c.status || 'pending'
-        }))
-        
-        setCampaigns(mappedCampaigns)
-        setCachedCampaigns(mappedCampaigns) // Update cache
-        setLastUpdated(new Date())
-      }
+      const campaignsData = normalizeCampaignList(data)
+
+      const mappedCampaigns = campaignsData.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        fundedAmount: c.funded_amount || c.fundedAmount || 0,
+        fundingGoal: c.funding_goal || c.fundingGoal || 0,
+        backers: c.backers_count || c.backers || 0,
+        upvoteGoal: c.upvote_goal || c.upvoteGoal || 0,
+        upvoteCount: c.upvote_count || c.upvoteCount || 0,
+        status: c.status || 'pending',
+        days_remaining: c.days_remaining ?? c.daysRemaining ?? null,
+        updated_at: c.updated_at || c.updatedAt || null,
+      }))
+
+      setCampaigns(mappedCampaigns)
+      setCachedCampaigns(mappedCampaigns)
+      setLastUpdated(new Date())
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load creator data"
       console.error("Creator data error:", errorMessage)
@@ -131,21 +162,21 @@ export default function DashboardPage() {
       setCreatorLoading(false)
       setIsRefreshing(false)
     }
-  }, [token, user?.role])
+  }, [token, hasCreatorRole])
 
   // Initial fetch on mount
   useEffect(() => {
-    if (token && user?.role === "creator") {
+    if (token && hasCreatorRole) {
       fetchCreatorData(true)
     }
-  }, [token, user?.role, fetchCreatorData])
+  }, [token, hasCreatorRole, fetchCreatorData])
 
   // Optional: Refresh on window focus (much less aggressive than 30-second interval)
   useEffect(() => {
     let isMounted = true
 
     const handleFocus = () => {
-      if (isMounted && user?.role === "creator") {
+      if (isMounted && hasCreatorRole) {
         // Only refresh if more than 2 minutes have passed
         if (lastUpdated && Date.now() - lastUpdated.getTime() > 120000) {
           fetchCreatorData(false)
@@ -158,7 +189,7 @@ export default function DashboardPage() {
       isMounted = false
       window.removeEventListener("focus", handleFocus)
     }
-  }, [fetchCreatorData, user?.role, lastUpdated])
+  }, [fetchCreatorData, hasCreatorRole, lastUpdated])
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -170,8 +201,8 @@ export default function DashboardPage() {
     )
   }
 
-  // If not a creator, don't render (layout will handle redirect)
-  if (!user || user.role !== "creator") {
+  // If the user doesn't have creator access, don't render this page
+  if (!user || !hasCreatorRole) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
@@ -184,53 +215,39 @@ export default function DashboardPage() {
 
   // CREATOR VIEW
   return (
-      <div className="space-y-8">
-        {/* Last Updated */}
-        <div>
-          {lastUpdated && (
-            <p className="text-sm text-muted-foreground">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </p>
-          )}
-        </div>
-
-        {/* Error Alert */}
-        {creatorError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+    <div className="space-y-3 pb-20 px-2 sm:space-y-4 sm:pb-0 sm:px-0">
+      {/* Error Alert */}
+      {creatorError && (
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-4 shadow-sm sm:p-5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-1 h-5 w-5 flex-shrink-0 text-red-600" />
             <div className="flex-1">
               <p className="font-semibold text-red-900">Error loading campaigns</p>
               <p className="text-sm text-red-700">{creatorError}</p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-2 text-red-600 hover:text-red-700"
+                className="mt-2 text-xs text-red-600 hover:text-red-700 sm:text-sm"
                 onClick={() => fetchCreatorData(true)}
               >
                 Try Again
               </Button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Loading State */}
-        {creatorLoading && !cachedCampaigns.length ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
-            <span className="ml-2 text-neutral-600">Loading campaigns...</span>
-          </div>
-        ) : (
-          <>
-            {/* Progressive Loading Indicator */}
-            {isRefreshing && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2 text-sm text-blue-700">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Updating dashboard...
-              </div>
-            )}
-
-            {creatorStats && (
-              <>
+      {/* Loading State */}
+      {creatorLoading && !cachedCampaigns.length ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-neutral-600" />
+          <span className="ml-2 text-neutral-600">Loading campaigns...</span>
+        </div>
+      ) : (
+        <>
+          <MobileTabs tabs={dashboardTabs} activeTab={activeView} onTabChange={setActiveView}>
+            {activeView === "overview" && (
+              <div className="space-y-3">
                 <DashboardStats
                   totalCampaigns={creatorStats.totalCampaigns}
                   totalEarnings={creatorStats.totalEarnings}
@@ -238,91 +255,97 @@ export default function DashboardPage() {
                   totalBackers={creatorStats.totalBackers}
                 />
 
-                <div className="mt-3">
+                <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
                   <Link
                     href="/dashboard/analytics"
-                    className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-100 hover:text-blue-700"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition hover:bg-blue-100 hover:text-blue-700"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     View all analytics
                   </Link>
                 </div>
-
-                <DashboardRecentCampaigns campaigns={campaigns.length > 0 ? campaigns : cachedCampaigns} />
-
-                {/* Additional Creator Stats - 6 Grid (2 rows × 3 columns) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground mb-2">Active Campaigns</div>
-                      <div className="text-3xl font-bold">{creatorStats.activeCampaigns}</div>
-                      <p className="text-xs text-neutral-500 mt-2">Currently running</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground mb-2">Active Sales</div>
-                      <div className="text-3xl font-bold">${creatorStats.activeSales.toLocaleString()}</div>
-                      <p className="text-xs text-neutral-500 mt-2">From active campaigns</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground mb-2">Active Showcases</div>
-                      <div className="text-3xl font-bold">{creatorStats.activeShowcases}</div>
-                      <p className="text-xs text-neutral-500 mt-2">Featured campaigns</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground mb-2">Recently Closed</div>
-                      <div className="text-3xl font-bold">{creatorStats.recentlyClosed}</div>
-                      <p className="text-xs text-neutral-500 mt-2">Ended campaigns</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground mb-2">Total Donations</div>
-                      <div className="text-3xl font-bold">{creatorStats.totalDonations.toLocaleString()}</div>
-                      <p className="text-xs text-neutral-500 mt-2">Across all campaigns</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-sm text-muted-foreground mb-2">Outbound Bounces</div>
-                      <div className="text-3xl font-bold">{creatorStats.outboundBounces}</div>
-                      <p className="text-xs text-neutral-500 mt-2">Failed notifications</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </>
+              </div>
             )}
-          </>
-        )}
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Link href="/launch-campaign">
-                <Button className="w-full" variant="outline">
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Launch New Campaign
-                </Button>
-              </Link>
-              <Link href="/dashboard/profile">
-                <Button className="w-full" variant="outline">
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  View Profile
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
+            {activeView === "growth" && (
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3">
+                <Card className="rounded-3xl border-0 bg-white shadow-[0_14px_36px_-20px_rgba(15,23,42,0.45)]">
+                  <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 sm:text-[11px]">Active Campaigns</div>
+                    <div className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">{creatorStats.activeCampaigns}</div>
+                    <p className="mt-2 text-[11px] text-slate-500">Currently running</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-0 bg-emerald-50 shadow-[0_14px_36px_-20px_rgba(16,185,129,0.35)]">
+                  <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-600 sm:text-[11px]">Active Sales</div>
+                    <div className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">${creatorStats.activeSales.toLocaleString()}</div>
+                    <p className="mt-2 text-[11px] text-slate-500">From active campaigns</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-0 bg-violet-50 shadow-[0_14px_36px_-20px_rgba(139,92,246,0.35)]">
+                  <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-600 sm:text-[11px]">Active Showcases</div>
+                    <div className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">{creatorStats.activeShowcases}</div>
+                    <p className="mt-2 text-[11px] text-slate-500">Featured campaigns</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-0 bg-amber-50 shadow-[0_14px_36px_-20px_rgba(245,158,11,0.35)]">
+                  <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-600 sm:text-[11px]">Recently Closed</div>
+                    <div className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">{creatorStats.recentlyClosed}</div>
+                    <p className="mt-2 text-[11px] text-slate-500">Ended campaigns</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-0 bg-sky-50 shadow-[0_14px_36px_-20px_rgba(14,165,233,0.35)]">
+                  <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-600 sm:text-[11px]">Total Donations</div>
+                    <div className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">{creatorStats.totalDonations.toLocaleString()}</div>
+                    <p className="mt-2 text-[11px] text-slate-500">Across all campaigns</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-0 bg-rose-50 shadow-[0_14px_36px_-20px_rgba(244,63,94,0.35)]">
+                  <CardContent className="px-3 py-4 sm:px-5 sm:py-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-rose-600 sm:text-[11px]">Outbound Bounces</div>
+                    <div className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">{creatorStats.outboundBounces}</div>
+                    <p className="mt-2 text-[11px] text-slate-500">Failed notifications</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeView === "campaigns" && (
+              <div className="space-y-3">
+                <DashboardRecentCampaigns campaigns={campaigns.length > 0 ? campaigns : cachedCampaigns} />
+              </div>
+            )}
+          </MobileTabs>
+        </>
+      )}
+
+      <Card className="rounded-3xl border-0 bg-white shadow-[0_14px_36px_-20px_rgba(15,23,42,0.45)]">
+        <CardContent className="px-4 py-4 sm:px-5 sm:py-5">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <Link href="/launch-campaign">
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Launch New Campaign
+              </Button>
+            </Link>
+            <Link href="/dashboard/profile">
+              <Button className="w-full justify-start text-xs sm:text-sm" variant="outline">
+                <ArrowRight className="mr-2 h-4 w-4" />
+                View Profile
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }

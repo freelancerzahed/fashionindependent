@@ -37,7 +37,7 @@ export default function NotificationsPage() {
     {
       id: 4,
       type: "new_campaign",
-      title: "New Campaign from Favorite Creator",
+      title: "New Campaign from Favorite Creative",
       message: "Emma Studios launched a new campaign",
       timestamp: "1 week ago",
       read: true,

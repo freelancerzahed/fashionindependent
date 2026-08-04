@@ -23,7 +23,7 @@ export default function RulesPage() {
             <div className="space-y-12">
               {/* Designer Requirements */}
               <div>
-                <h2 className="text-3xl font-bold mb-6">For Designers & Creators</h2>
+                <h2 className="text-3xl font-bold mb-6">For Designers & Creatives</h2>
                 <div className="space-y-4 text-lg text-neutral-700 leading-relaxed">
                   <div>
                     <h3 className="font-semibold text-xl mb-2">Campaign Requirements</h3>

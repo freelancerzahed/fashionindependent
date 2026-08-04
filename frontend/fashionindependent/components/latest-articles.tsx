@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { CarouselSlider } from "@/components/carousel-slider"
 import { BlogSlide } from "@/components/blog-slide"
+import { BACKEND_URL } from "@/config"
 
 interface BlogArticle {
   id: string | number
@@ -19,10 +20,7 @@ interface LatestArticlesProps {
 
 async function fetchArticles(): Promise<BlogArticle[]> {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-    if (!apiUrl) return []
-
-    const response = await fetch(`${apiUrl}/blog-list?page=1`, {
+    const response = await fetch(`${BACKEND_URL}/blog-list?page=1`, {
       method: "GET",
       headers: {
         "Accept": "application/json",
@@ -45,8 +43,7 @@ async function fetchArticles(): Promise<BlogArticle[]> {
     }
 
     return []
-  } catch (err) {
-    console.error("❌ Error fetching articles:", err)
+  } catch {
     return []
   }
 }
@@ -67,8 +64,7 @@ export function LatestArticles({ initialArticles = [] }: LatestArticlesProps) {
       try {
         const data = await fetchArticles()
         setArticles(data.slice(0, 3))
-      } catch (err) {
-        console.error("Error fetching articles:", err)
+      } catch {
       } finally {
         setLoading(false)
       }

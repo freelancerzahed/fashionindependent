@@ -6,10 +6,10 @@ export default function PartnershipAgreementPage() {
 
         <div className="prose prose-neutral max-w-none space-y-6">
           <section>
-            <h2 className="text-2xl font-bold mb-4">Creator Partnership Agreement</h2>
+            <h2 className="text-2xl font-bold mb-4">Creative Partnership Agreement</h2>
             <p className="text-neutral-700 leading-relaxed">
               This Partnership Agreement ("Agreement") is entered into between Mirror Me Fashion LLC ("Platform") and
-              the Creator ("You") for the purpose of launching and managing crowdfunding campaigns on The Fashion
+              the Creative ("You") for the purpose of launching and managing crowdfunding campaigns on The Fashion
               Independent platform.
             </p>
           </section>
@@ -38,10 +38,10 @@ export default function PartnershipAgreementPage() {
               </div>
               <div className="flex justify-between">
                 <span>Manufacturing Costs:</span>
-                <span className="font-semibold">Deducted from creator payout</span>
+                <span className="font-semibold">Deducted from creative payout</span>
               </div>
               <div className="border-t pt-3 flex justify-between font-bold">
-                <span>Creator Receives:</span>
+                <span>Creative Receives:</span>
                 <span>Pledges - 10% - $2/pledge - Manufacturing</span>
               </div>
             </div>

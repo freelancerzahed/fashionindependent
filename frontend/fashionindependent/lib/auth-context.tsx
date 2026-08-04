@@ -7,6 +7,14 @@ import { BACKEND_URL, AUTH_CONFIG } from "@/config"
 
 const API_BASE = "/api"
 
+function getApiUrl(path: string) {
+  const baseUrl = typeof window !== "undefined"
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "http://127.0.0.1:3000")
+
+  return new URL(path, `${baseUrl.replace(/\/$/, "")}/`).toString()
+}
+
 interface AuthContextType {
   user: User | null
   token: string | null
@@ -53,6 +61,8 @@ const getApiErrorMessage = (data: any) => {
       .map((entry) => String(entry))
     if (messages.length) return messages.join("; ")
   }
+  if (data.details) return data.details
+  if (data.errorMessage) return data.errorMessage
   return "Signup failed"
 }
 
@@ -159,73 +169,106 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Try to login with different user types,
       // including backer because signup creates backers as a separate user_type.
       const userTypes = ['customer', 'creator', 'backer', 'seller', 'admin']
-      let response = null
-      let lastError = null
+      const payloadVariants = [
+        { label: 'standard', body: { email, password, login_by: 'email', recaptcha_token: '' } },
+        { label: 'simple', body: { email, password, login_by: 'email' } },
+        { label: 'legacy', body: { email, password } },
+        { label: 'email-or-phone', body: { email_or_phone: email, password } },
+      ]
+      let response: Response | null = null
+      let lastError: Error | null = null
+      
+      console.log("[Auth] Starting login attempt", { 
+        email, 
+        apiBase: API_BASE,
+        backendUrl: BACKEND_URL,
+        userTypes,
+        payloadVariants: payloadVariants.map(({ label }) => label),
+      })
       
       for (const userType of userTypes) {
-        const url = `${API_BASE}/auth/login`
+        const url = getApiUrl(`${API_BASE}/auth/login`)
         console.log(`[Auth] Attempting login as ${userType}:`, { email, url })
-        
-        response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ 
-            email, 
-            password,
-            login_by: 'email',
-            user_type: userType,
-            recaptcha_token: ''
-          }),
-        })
 
-        let data
-        try {
-          data = await response.json()
-        } catch (parseError) {
-          const text = await response.text()
-          console.error(`[Auth] Server returned non-JSON for ${userType}:`, text.substring(0, 500))
-          lastError = new Error(`Server error: ${response.status} - ${response.statusText}`)
-          continue
-        }
-
-        console.log(`[Auth] Login response (${userType}):`, { status: response.status, data })
-
-        if (response.ok && data.user) {
-          // Success! Found the user
-          const rawRole = data.user?.role || data.user?.type || data.data?.role || data.data?.type || userType
-          const normalizedRole = normalizeUserRole(rawRole, userType)
-
-          const normalizedRoles = normalizeUserRoles(
-            data.roles || data.user?.roles || data.data?.roles || [normalizedRole],
-            normalizedRole
-          )
-
-          const mockUser: User = {
-            id: data.user?.id || data.data?.id || Math.random().toString(),
-            email: data.user?.email || data.data?.email || email,
-            name: data.user?.name || data.data?.name || email.split("@")[0],
-            role: normalizedRole as "backer" | "creator",
-            roles: normalizedRoles,
-            avatar: data.user?.avatar || data.data?.avatar,
-            createdAt: new Date(),
+        for (const payloadVariant of payloadVariants) {
+          try {
+            response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ...payloadVariant.body,
+                user_type: userType,
+              }),
+            })
+          } catch (fetchError) {
+            console.error(`[Auth] Network error for ${userType} (${payloadVariant.label}):`, fetchError)
+            lastError = fetchError instanceof Error ? fetchError : new Error(`Network error: ${String(fetchError)}`)
+            continue
           }
 
-          console.log("[Auth] User logged in:", mockUser)
-          setUser(mockUser)
-          const authToken = sanitizeStoredToken(data.token || data.access_token || data.data?.token || "")
-
-          if (!authToken) {
-            throw new Error("Authentication token was not returned by the backend")
+          let data: Record<string, any> | null = null
+          try {
+            const text = await response.text()
+            if (text) {
+              data = JSON.parse(text)
+            }
+          } catch (parseError) {
+            const text = await response.text()
+            console.error(`[Auth] Server returned non-JSON for ${userType} (${payloadVariant.label}):`, {
+              status: response.status,
+              statusText: response.statusText,
+              body: text.substring(0, 500)
+            })
+            lastError = new Error(`Server error: ${response.status} ${response.statusText}`)
+            continue
           }
 
-          setToken(authToken)
-          localStorage.setItem("user", JSON.stringify(mockUser))
-          localStorage.setItem("auth_token", authToken)
-          return
-        } else {
-          lastError = new Error(data.message || data.error || `Login failed as ${userType}`)
+          console.log(`[Auth] Login response (${userType}/${payloadVariant.label}):`, {
+            status: response.status,
+            hasUser: !!(data?.user || data?.data?.user),
+            hasToken: !!(data?.token || data?.access_token || data?.data?.token || data?.data?.access_token),
+            body: data,
+          })
+
+          const extractedUser = data?.user || data?.data?.user || data?.data || null
+          const authToken = sanitizeStoredToken(data?.token || data?.access_token || data?.data?.token || data?.data?.access_token || "")
+          const isSuccessfulLogin = response.ok && (extractedUser || authToken || data?.result === true || data?.success === true)
+
+          if (isSuccessfulLogin) {
+            const rawRole = extractedUser?.role || extractedUser?.type || data?.user?.role || data?.data?.role || data?.data?.type || userType
+            const normalizedRole = normalizeUserRole(rawRole, userType)
+
+            const normalizedRoles = normalizeUserRoles(
+              data?.roles || extractedUser?.roles || data?.user?.roles || data?.data?.roles || [normalizedRole],
+              normalizedRole
+            )
+
+            const mockUser: User = {
+              id: extractedUser?.id || data?.user?.id || data?.data?.id || Math.random().toString(),
+              email: extractedUser?.email || data?.user?.email || data?.data?.email || email,
+              name: extractedUser?.name || data?.user?.name || data?.data?.name || email.split("@")[0],
+              role: normalizedRole as "backer" | "creator",
+              roles: normalizedRoles,
+              avatar: extractedUser?.avatar || data?.user?.avatar || data?.data?.avatar,
+              createdAt: new Date(),
+            }
+
+            console.log("[Auth] User logged in:", mockUser)
+            setUser(mockUser)
+
+            if (!authToken) {
+              throw new Error("Authentication token was not returned by the backend")
+            }
+
+            setToken(authToken)
+            localStorage.setItem("user", JSON.stringify(mockUser))
+            localStorage.setItem("auth_token", authToken)
+            return
+          }
+
+          lastError = new Error(data?.message || data?.error || data?.details || `Login failed as ${userType}`)
         }
       }
       
@@ -254,8 +297,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true)
     try {
       const isCreator = role === "creator"
-      const endpoint = "/auth/signup"
-      const url = `${API_BASE}${endpoint}`
+      const endpoint = isCreator ? "/creator/signup" : "/auth/signup"
+      const url = getApiUrl(`${API_BASE}${endpoint}`)
 
       console.log("[Auth] Signing up with:", { email, name, role, url, providerId: options?.providerId })
 
@@ -266,9 +309,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           email,
-          // If providerId exists, still send the password the user typed (if any).
-          // Previously we always sent empty password when providerId was present which
-          // caused server-side "password required" errors even when the user typed one.
           password: options?.providerId && (!password || password.trim().length === 0) ? "" : password,
           name,
           role,
@@ -276,13 +316,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           age_range: options?.ageRange || null,
           provider_id: options?.providerId || null,
           alphanumeric_code: `FI-${Date.now().toString(36).toUpperCase()}`,
-          ...(isCreator && {
+          ...(isCreator ? {
             has_inventory: true,
             has_tech_pack: false,
-            accepted_terms: false,
-            accepted_collaboration_agreement: false,
-            accepted_delivery_obligation: false,
-          })
+            accepted_terms: true,
+            accepted_collaboration_agreement: true,
+            accepted_delivery_obligation: true,
+            user_type: "creator",
+          } : {})
         }),
       })
 

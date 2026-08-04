@@ -18,28 +18,36 @@ export async function POST(req: Request) {
     });
 
     const contentType = res.headers.get("content-type") || "";
+    const responseText = await res.text();
+    let data: Record<string, any> | null = null;
 
-    // Check if response is JSON
-    if (contentType.includes("application/json")) {
-      const data = await res.json();
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = null;
+      }
+    }
+
+    if (data) {
       console.log("[Auth API] Backend response status:", res.status);
       return NextResponse.json(data, { status: res.status });
-    } else {
-      // Non-JSON response (error page)
-      const text = await res.text();
-      console.error("[Auth API] Backend returned non-JSON response:", {
-        status: res.status,
-        contentType,
-        text: text.substring(0, 500),
-      });
-      return NextResponse.json(
-        { 
-          error: "Backend returned non-JSON response", 
-          details: `HTTP ${res.status}: ${res.statusText}` 
-        },
-        { status: 500 }
-      );
     }
+
+    console.error("[Auth API] Backend returned an unexpected response:", {
+      status: res.status,
+      contentType,
+      text: responseText.substring(0, 500),
+    });
+
+    return NextResponse.json(
+      {
+        error: "Backend returned an unexpected response",
+        details: responseText ? responseText.substring(0, 500) : `HTTP ${res.status}: ${res.statusText}`,
+        statusCode: res.status,
+      },
+      { status: res.status >= 400 ? res.status : 500 }
+    );
   } catch (err) {
     console.error("[Auth API] Fetch failed:", err);
     return NextResponse.json(

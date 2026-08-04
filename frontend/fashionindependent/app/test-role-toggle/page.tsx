@@ -50,7 +50,7 @@ export default function TestRoleTogglePage() {
                     variant={activeRole === "creator" ? "default" : "outline"}
                     className="flex-1 text-sm"
                   >
-                    Creator
+                    Creative
                   </Button>
                   <Button
                     onClick={() => handleRoleChange("backer")}
@@ -81,9 +81,9 @@ export default function TestRoleTogglePage() {
                 
                 {showCreatorDashboard && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-neutral-700">Creator Dashboard</h3>
+                    <h3 className="font-semibold text-neutral-700">Creative Dashboard</h3>
                     <p className="text-neutral-600">
-                      This is the creator dashboard view. You can see the creator sidebar on the left with options for:
+                      This is the creative dashboard view. You can see the creative sidebar on the left with options for:
                     </p>
                     <ul className="list-disc pl-6 text-neutral-600 space-y-2">
                       <li>Overview - Campaign statistics and summaries</li>
@@ -115,7 +115,7 @@ export default function TestRoleTogglePage() {
 
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    ✅ <strong>Feature Working:</strong> Click the "Creator" and "Backer" buttons above to switch between different dashboard views. Your choice is saved in localStorage and will persist across page refreshes.
+                    ✅ <strong>Feature Working:</strong> Click the "Creative" and "Backer" buttons above to switch between different dashboard views. Your choice is saved in localStorage and will persist across page refreshes.
                   </p>
                 </div>
               </div>

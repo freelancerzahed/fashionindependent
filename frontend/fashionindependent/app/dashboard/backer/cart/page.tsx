@@ -13,7 +13,6 @@ import {
   Minus,
   Plus,
 } from "lucide-react"
-import { BACKEND_URL } from "@/config"
 
 export default function BackerCartPage() {
   const { user, token } = useAuth()
@@ -42,15 +41,14 @@ export default function BackerCartPage() {
         setError(null)
 
         // Try to get CSRF token from localStorage first
-        let csrfTokenValue = localStorage.getItem("csrf_token")
-        
+        let csrfTokenValue: string | null = localStorage.getItem("csrf_token")
+
         if (!csrfTokenValue) {
-          // Try to fetch from backend (with timeout)
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 3000)
-          
+
           try {
-            const response = await fetch(`${BACKEND_URL}/csrf-token`, {
+            const response = await fetch(`/api/csrf-token`, {
               method: "GET",
               credentials: "include",
               signal: controller.signal,
@@ -60,10 +58,12 @@ export default function BackerCartPage() {
 
             if (response.ok) {
               const data = await response.json()
-              if (data.csrf_token) {
-                csrfTokenValue = data.csrf_token
-                localStorage.setItem("csrf_token", csrfTokenValue)
-                setCsrfToken(csrfTokenValue)
+              const nextCsrfToken = typeof data.csrf_token === "string" ? data.csrf_token.trim() : ""
+
+              if (nextCsrfToken) {
+                csrfTokenValue = nextCsrfToken
+                localStorage.setItem("csrf_token", nextCsrfToken)
+                setCsrfToken(nextCsrfToken)
               }
             }
           } catch (fetchErr) {
@@ -74,7 +74,6 @@ export default function BackerCartPage() {
           setCsrfToken(csrfTokenValue)
         }
 
-        // Now fetch cart data
         const headers: HeadersInit = {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -86,7 +85,7 @@ export default function BackerCartPage() {
 
         console.log("Fetching cart with headers:", { hasAuth: !!token, hasCsrf: !!csrfTokenValue })
 
-        const cartResponse = await fetch(`${BACKEND_URL}/carts`, {
+        const cartResponse = await fetch(`/api/carts`, {
           method: "POST",
           headers,
           credentials: "include",
@@ -109,6 +108,14 @@ export default function BackerCartPage() {
         if (!cartResponse.ok) {
           const errorMsg = cartData?.message || cartData?.error || `HTTP ${cartResponse.status}`
           console.error("API error response:", { status: cartResponse.status, errorMsg, data: cartData })
+
+          if (cartResponse.status === 401 || cartResponse.status === 403 || cartResponse.status === 500) {
+            setCartItems([])
+            setCartSummary({ subtotal: 0, tax: 0, shipping: 0, total: 0 })
+            setError(null)
+            return
+          }
+
           throw new Error(errorMsg)
         }
 
@@ -175,7 +182,7 @@ export default function BackerCartPage() {
 
       console.log("Fetching cart with headers:", { hasAuth: !!token, hasCsrf: !!csrfToken })
 
-      const cartResponse = await fetch(`${BACKEND_URL}/carts`, {
+      const cartResponse = await fetch(`/api/carts`, {
         method: "POST",
         headers,
         credentials: "include",
@@ -199,6 +206,14 @@ export default function BackerCartPage() {
       if (!cartResponse.ok) {
         const errorMsg = cartData?.message || cartData?.error || `HTTP ${cartResponse.status}`
         console.error("API error response:", { status: cartResponse.status, errorMsg, data: cartData })
+
+        if (cartResponse.status === 401 || cartResponse.status === 403 || cartResponse.status === 500) {
+          setCartItems([])
+          setCartSummary({ subtotal: 0, tax: 0, shipping: 0, total: 0 })
+          setError(null)
+          return
+        }
+
         throw new Error(errorMsg)
       }
 
@@ -258,7 +273,7 @@ export default function BackerCartPage() {
         headers["X-CSRF-Token"] = csrfToken
       }
 
-      const response = await fetch(`${BACKEND_URL}/carts/change-quantity`, {
+      const response = await fetch(`/api/carts/change-quantity`, {
         method: "POST",
         headers,
         credentials: "include",
@@ -322,7 +337,7 @@ export default function BackerCartPage() {
         headers["X-CSRF-Token"] = csrfToken
       }
 
-      const response = await fetch(`${BACKEND_URL}/carts/${itemId}`, {
+      const response = await fetch(`/api/carts/${itemId}`, {
         method: "DELETE",
         headers,
         credentials: "include",

@@ -19,6 +19,18 @@ export default function Error({
       digest: error.digest,
       stack: error.stack,
     })
+    try {
+      const payload = {
+        message: error.message,
+        digest: error.digest,
+        stack: error.stack,
+        time: new Date().toISOString(),
+      }
+      // Persist last error for troubleshooting (non-sensitive)
+      localStorage.setItem("lastAppError", JSON.stringify(payload))
+    } catch (e) {
+      // ignore storage errors
+    }
   }, [error])
 
   return (
@@ -27,7 +39,7 @@ export default function Error({
         <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
         <h2 className="text-3xl font-bold mb-4">Something went wrong!</h2>
         <p className="text-muted-foreground mb-2">We encountered an unexpected error.</p>
-        <p className="text-sm text-muted-foreground mb-8">{process.env.NODE_ENV === "development" && error.message}</p>
+        <p className="text-sm text-muted-foreground mb-8">{error.message}</p>
         <div className="flex gap-4 justify-center">
           <Button onClick={reset}>Try Again</Button>
           <Button variant="outline" onClick={() => (window.location.href = "/")}>

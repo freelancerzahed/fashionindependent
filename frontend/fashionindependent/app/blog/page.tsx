@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import BlogPageClient from "@/components/blog-page-client"
+import { SITE_URL } from "@/config"
 
 // Revalidate every 5 minutes (300 seconds) for ISR to get latest articles
 export const revalidate = 300
@@ -25,22 +26,18 @@ interface BlogResponse {
 
 async function fetchBlogs(): Promise<BlogPost[]> {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL
-    
-    if (!apiUrl) {
-      console.error("❌ API URL not configured")
-      return []
-    }
+    const proxyUrl = SITE_URL
+      ? new URL("/api/blog/list?page=1", SITE_URL).toString()
+      : "/api/blog/list?page=1"
 
-    console.log("📡 Server: Fetching blogs from", `${apiUrl}/blog-list`)
+    console.log("📡 Server: Fetching blogs from internal proxy", proxyUrl)
 
-    const response = await fetch(`${apiUrl}/blog-list?page=1`, {
+    const response = await fetch(proxyUrl, {
       method: "GET",
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
       },
-      // Cache for 1 hour
       next: { revalidate: 3600 }
     })
 

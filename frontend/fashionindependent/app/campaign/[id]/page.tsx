@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MobileTabs } from "@/components/mobile-tabs"
-import { Heart, Share2, TrendingUp, Users, Clock, Check, Eye, RefreshCw, AlertCircle } from "lucide-react"
+import { Heart, Share2, TrendingUp, Users, Clock, Check, Eye, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { useCart } from "@/lib/cart-context"
 import { useAuth } from "@/lib/auth-context"
@@ -37,12 +37,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
       if (!skipLoading) setLoading(true)
       setError(null)
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      if (!apiUrl) {
-        throw new Error("API URL not configured")
-      }
-
-      const response = await fetch(`${apiUrl}/campaign/${id}`, {
+      const response = await fetch(`/api/campaign/${id}`, {
         method: "GET",
         headers: {
           "Accept": "application/json",
@@ -227,11 +222,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
           </div>
           <h1 className="text-2xl md:text-3xl font-bold mb-2 text-neutral-900">Campaign Not Found</h1>
           {error && <p className="text-red-600 mb-6 font-medium">{error}</p>}
-          <div className="flex gap-3 justify-center">
-            <Button onClick={handleRefresh} variant="outline" className="border-2">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
+          <div className="flex justify-center">
             <Button onClick={() => router.push("/discover")} className="bg-neutral-900 hover:bg-neutral-800">
               Back to Discover
             </Button>
@@ -253,10 +244,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
     setIsLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
       const token = localStorage.getItem("sanctum_token") || localStorage.getItem("auth_token") || ""
       
-      const response = await fetch(`${apiUrl}/campaign/${campaignId}/vote`, {
+      const response = await fetch(`/api/campaign/${campaignId}/vote`, {
         method: "POST",
         headers: {
           "Accept": "application/json",
@@ -293,10 +283,9 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
     setIsLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
       const token = localStorage.getItem("sanctum_token") || localStorage.getItem("auth_token") || ""
       
-      const response = await fetch(`${apiUrl}/campaign/${campaignId}/vote`, {
+      const response = await fetch(`/api/campaign/${campaignId}/vote`, {
         method: "POST",
         headers: {
           "Accept": "application/json",
@@ -348,28 +337,8 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <main className="flex-1 min-h-screen bg-gradient-to-b from-white via-neutral-50 to-white">
-      {/* Status Bar - Shows last update time and refresh button */}
-      {lastUpdated && (
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-neutral-200 py-2 sm:py-3">
-          <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 max-w-7xl">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs sm:text-sm text-neutral-600">
-                Last updated: <span className="font-semibold text-neutral-900">{lastUpdated.toLocaleTimeString()}</span>
-              </p>
-              <Button
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-xs sm:text-sm"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Status Bar */}
+      <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 py-2 backdrop-blur-sm sm:py-3" />
 
       {/* Hero Section */}
       <section className="w-full py-6 md:py-16 lg:py-20 border-b border-neutral-100">
@@ -616,7 +585,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
                       id="feedback"
                       name="feedback"
                       placeholder="Enter your feedback here..."
-                      maxLength="500"
+                      maxLength={500}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
                     ></textarea>

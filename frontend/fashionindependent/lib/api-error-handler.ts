@@ -163,7 +163,7 @@ export async function apiCall<T = any>(
 
     if (retryable) {
       try {
-        const data = await retryFetch(makeRequest)
+        const data = await retryFetch<T>(makeRequest)
         return { success: true, data }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Request failed"
@@ -195,8 +195,8 @@ export async function apiCall<T = any>(
         return { success: false, error, message: error.message }
       }
 
-      const data = await response.json()
-      return { success: true, data, message: data.message }
+      const data: T = await response.json()
+      return { success: true, data, message: typeof data === "object" && data && "message" in data ? String((data as { message?: string }).message) : undefined }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request failed"

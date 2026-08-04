@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { BACKEND_URL } from "@/config"
 import { Users, TrendingUp, Award, Search, Filter, Loader, RefreshCw, AlertCircle } from "lucide-react"
 
 export default function BackersPage() {
@@ -29,17 +30,10 @@ export default function BackersPage() {
         return
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      if (!apiUrl) {
-        setError("API URL not configured")
-        setLoading(false)
-        return
-      }
-
       console.log("Fetching backers data...")
 
       // First, fetch all campaigns for the creator
-      const campaignsResponse = await fetch(`${apiUrl}/campaign`, {
+      const campaignsResponse = await fetch(`${BACKEND_URL}/campaign`, {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -61,7 +55,7 @@ export default function BackersPage() {
       for (const campaign of campaigns) {
         try {
           const pledgesResponse = await fetch(
-            `${apiUrl}/pledge/campaign/${campaign.id}`,
+            `${BACKEND_URL}/pledge/campaign/${campaign.id}`,
             {
               method: "GET",
               headers: {

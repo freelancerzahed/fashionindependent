@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Upload, Trash2, CheckCircle, AlertCircle, Loader2, RefreshCw } from "lucide-react"
+import { Upload, Trash2, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import { BACKEND_URL } from "@/config"
 
 interface Document {
   id: number
@@ -53,7 +52,7 @@ export function DocumentsSection() {
     try {
       console.log("[Documents] Fetching with token:", token.substring(0, 20) + "...")
       
-      const response = await fetch(`${BACKEND_URL}/creator/documents`, {
+      const response = await fetch(`/api/creator/documents`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -121,7 +120,7 @@ export function DocumentsSection() {
     setVerificationError("")
     setVerificationRetryIn(0)
     try {
-      const response = await fetch(`${BACKEND_URL}/creator/verification/checklist`, {
+      const response = await fetch(`/api/creator/verification/checklist`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -246,7 +245,7 @@ export function DocumentsSection() {
     }
   }, [fetchDocuments, uploading])
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: "Tech_pack" | "id_front" | "id_back" | "partnership_agreement" | "checklist") => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: "tech_pack" | "id_front" | "id_back" | "partnership_agreement" | "checklist") => {
     const file = e.target.files?.[0]
     if (!file || !token) return
 
@@ -265,7 +264,7 @@ export function DocumentsSection() {
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await fetch(`${BACKEND_URL}/creator/documents/upload`, {
+      const response = await fetch(`/api/creator/documents`, {
         method: "POST",
         headers,
         body: formData,
@@ -319,7 +318,7 @@ export function DocumentsSection() {
         "Content-Type": "application/json",
       }
 
-      const response = await fetch(`${BACKEND_URL}/creator/documents/type/${docType}`, {
+      const response = await fetch(`/api/creator/documents/${docType}`, {
         method: "DELETE",
         headers,
       })
@@ -398,24 +397,11 @@ export function DocumentsSection() {
         </div>
       )}
 
-      {/* Header with Refresh */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Documents Management</h3>
-          {lastUpdated && (
-            <p className="text-xs text-neutral-500 mt-1">Last updated: {lastUpdated.toLocaleTimeString()}</p>
-          )}
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="gap-2" 
-          onClick={() => fetchDocuments(true)} 
-          disabled={loading || uploading}
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
       </div>
 
       {/* Tabs */}
@@ -446,7 +432,7 @@ export function DocumentsSection() {
       {activeTab === "checklist" && (
         <div className="space-y-6">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Creator Checklist</h2>
+            <h2 className="text-3xl font-bold mb-2">Creative Checklist</h2>
             <p className="text-muted-foreground text-lg">Complete all required steps to launch your campaigns</p>
           </div>
 
@@ -868,7 +854,7 @@ export function DocumentsSection() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Partnership Agreement</h2>
             <p className="text-neutral-700 leading-relaxed mb-4">
-              Review and sign the creator partnership agreement. This agreement outlines the terms and conditions for using our platform.
+              Review and sign the creative partnership agreement. This agreement outlines the terms and conditions for using our platform.
             </p>
           </div>
 

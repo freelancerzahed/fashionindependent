@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
@@ -39,7 +38,7 @@ export const metadata: Metadata = {
     description: "Support talented indie fashion designers and discover rare fashion.",
     images: [
       {
-        url: "https://fashionindependent.com/og-image.jpg",
+        url: "https://thefashionindependent.com/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "The Fashion Independent",
@@ -50,7 +49,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "The Fashion Independent",
     description: "Support talented indie fashion designers and discover rare fashion.",
-    images: ["https://fashionindependent.com/twitter-image.jpg"],
+    images: ["https://thefashionindependent.com/twitter-image.jpg"],
   },
   robots: {
     index: true,
@@ -112,7 +111,6 @@ export default function RootLayout({
             </PaymentProvider>
           </CartProvider>
         </AuthProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics debug={false} />}
       </body>
     </html>
   )

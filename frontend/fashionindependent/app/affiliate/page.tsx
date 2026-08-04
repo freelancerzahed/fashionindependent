@@ -5,20 +5,15 @@ import React from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
 
 export default function AffiliatePage() {
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
       {/* Hero Section */}
       <section className="text-center py-20 px-6">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-6xl font-bold mb-6"
-        >
+        <h1 className="text-4xl md:text-6xl font-bold mb-6">
           Partner With Fashion Independent
-        </motion.h1>
+        </h1>
         <p className="text-lg md:text-xl max-w-2xl mx-auto mb-8 text-neutral-600">
           Join our affiliate program and earn commission by promoting independent fashion brands.
         </p>

@@ -8,7 +8,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Edit2, Plus, CheckCircle, Clock, Users, Zap, Target, Flame, X, Save, Upload, FileText, Download, RefreshCw, AlertCircle, Loader } from "lucide-react"
-import { BACKEND_URL } from "@/config"
 
 export default function CampaignsPage() {
   const [campaignFilter, setCampaignFilter] = useState("all")
@@ -18,6 +17,7 @@ export default function CampaignsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [viewingCampaignId, setViewingCampaignId] = useState<string | null>(null)
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,8 +36,8 @@ export default function CampaignsPage() {
     colors: [] as string[],
     status: "draft" as "draft" | "live",
   })
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageBackPreview, setImageBackPreview] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | undefined>(undefined)
+  const [imageBackPreview, setImageBackPreview] = useState<string | undefined>(undefined)
   const [frontImageFile, setFrontImageFile] = useState<File | null>(null)
   const [backImageFile, setBackImageFile] = useState<File | null>(null)
   const [techPackFile, setTechPackFile] = useState<File | null>(null)
@@ -69,15 +69,7 @@ export default function CampaignsPage() {
         return
       }
 
-      const fetchUrl = `${BACKEND_URL}/campaign`
-
-      if (!token) {
-        setError("Not authenticated. Please log in first.")
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch(fetchUrl, {
+      const response = await fetch(`/api/campaign`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -154,7 +146,7 @@ export default function CampaignsPage() {
   const fetchSurveyResponses = useCallback(async (campaignId: string) => {
     try {
       setSurveyLoading(true)
-      const response = await fetch(`${BACKEND_URL}/campaign/${campaignId}/question-statistics`, {
+      const response = await fetch(`/api/campaign/${campaignId}/question-statistics`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -228,6 +220,18 @@ export default function CampaignsPage() {
     }
 
     return { status, color, fundingPercentage }
+  }
+
+  const getStatusBadgeClasses = (status?: string) => {
+    if (status === "live") {
+      return "bg-emerald-100 text-emerald-700 border-emerald-200"
+    }
+
+    return "bg-slate-100 text-slate-700 border-slate-200"
+  }
+
+  const getStatusLabel = (status?: string) => {
+    return status === "live" ? "Published" : "Draft"
   }
 
   // Helper function to filter campaigns
@@ -304,7 +308,7 @@ export default function CampaignsPage() {
 
       console.log('Sending update request:', { campaignId: editingCampaignId, isDraft, data: updateData })
 
-      const response = await fetch(`${BACKEND_URL}/campaign/${editingCampaignId}`, {
+const response = await fetch(`/api/campaign/${editingCampaignId}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -363,7 +367,7 @@ export default function CampaignsPage() {
 
         console.log('Uploading files:', { hasImages: imageMetadata.length > 0, hasTechPack: !!techPackFile })
 
-        const uploadResponse = await fetch(`${BACKEND_URL}/campaign/${editingCampaignId}/upload-files`, {
+        const uploadResponse = await fetch(`/api/campaign/${editingCampaignId}/upload-files`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -383,8 +387,8 @@ export default function CampaignsPage() {
       await fetchCampaigns()
 
       setEditingCampaignId(null)
-      setImagePreview(null)
-      setImageBackPreview(null)
+      setImagePreview(undefined)
+      setImageBackPreview(undefined)
       setFrontImageFile(null)
       setBackImageFile(null)
       setTechPackFile(null)
@@ -396,59 +400,42 @@ export default function CampaignsPage() {
     }
   }
 
-  // Handle Publish Campaign
-  const handlePublishCampaign = async (campaignId: string) => {
+  // Handle publish/draft status change
+  const handleToggleCampaignStatus = async (campaign: any) => {
+    const nextStatus = campaign.status === "live" ? "draft" : "live"
+
     try {
+      setStatusUpdatingId(campaign.id)
       const token = getAuthToken()
       if (!token) {
         setError("Not authenticated")
         return
       }
 
-      const response = await fetch(`${BACKEND_URL}/campaign/${campaignId}/launch`, {
-        method: "POST",
+      const response = await fetch(`/api/campaign/${campaign.id}`, {
+        method: "PUT",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ status: nextStatus }),
       })
 
       const responseData = await response.json()
-      console.log('Campaign launch response:', responseData)
+      console.log('Campaign status update response:', responseData)
 
       if (!response.ok) {
-        throw new Error(responseData.message || `Failed to publish campaign: ${response.status}`)
+        throw new Error(responseData.message || `Failed to update campaign status: ${response.status}`)
       }
 
-      console.log('Campaign published successfully:', responseData.campaign)
-      
-      // Refresh campaigns list
       await fetchCampaigns()
-      
-      // Refresh the edit form with updated campaign data
-      if (editingCampaignId) {
-        const response = await fetch(`${BACKEND_URL}/campaign/${editingCampaignId}`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          if (data.status && data.campaign) {
-            handleEditCampaign(data.campaign)
-            console.log('Edit form refreshed with updated campaign data')
-          }
-        }
-      }
-      
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {
-      console.error("Error publishing campaign:", err)
-      setError(err instanceof Error ? err.message : "Failed to publish campaign")
+      console.error("Error updating campaign status:", err)
+      setError(err instanceof Error ? err.message : "Failed to update campaign status")
+    } finally {
+      setStatusUpdatingId(null)
     }
   }
 
@@ -472,7 +459,7 @@ export default function CampaignsPage() {
 
   // Show error state
   if (error && campaigns.length === 0) {
-    const apiUrl = `${BACKEND_URL}/campaign`
+    const apiUrl = `/api/campaign`
     return (
       <div className="space-y-8">
         <Card className="p-8 border border-red-200 bg-red-50">
@@ -627,8 +614,8 @@ export default function CampaignsPage() {
                 <h2 className="text-2xl font-bold">Edit Campaign</h2>
                 <button onClick={() => {
                   setEditingCampaignId(null)
-                  setImagePreview(null)
-                  setImageBackPreview(null)
+                  setImagePreview(undefined)
+                  setImageBackPreview(undefined)
                   setFrontImageFile(null)
                   setBackImageFile(null)
                   setTechPackFile(null)
@@ -812,7 +799,7 @@ export default function CampaignsPage() {
                         <label className="flex items-center justify-center gap-2 border-2 border-dashed border-neutral-300 rounded-lg p-4 hover:border-blue-500 cursor-pointer transition-all">
                           <FileText className="w-5 h-5 text-neutral-400" />
                           <span className="text-sm font-medium text-neutral-600">
-                            {techPackFile ? techPackFile.name : "Click to upload PDF"}
+                            {techPackFile?.name ?? "Click to upload PDF"}
                           </span>
                           <input type="file" accept=".pdf" onChange={handleTechPackUpload} className="hidden" />
                         </label>
@@ -846,7 +833,7 @@ export default function CampaignsPage() {
                       <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-900">{techPackFile.name} (new)</span>
+                          <span className="text-sm font-medium text-green-900">{techPackFile?.name ?? "Tech pack"} (new)</span>
                         </div>
                         <button
                           onClick={() => {
@@ -882,8 +869,8 @@ export default function CampaignsPage() {
                 </Button>
                 <Button variant="outline" className="flex-1" onClick={() => {
                   setEditingCampaignId(null)
-                  setImagePreview(null)
-                  setImageBackPreview(null)
+                  setImagePreview(undefined)
+                  setImageBackPreview(undefined)
                   setFrontImageFile(null)
                   setBackImageFile(null)
                   setTechPackFile(null)
@@ -1153,6 +1140,17 @@ export default function CampaignsPage() {
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit Campaign
                     </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleToggleCampaignStatus(activeCampaignData)}
+                      disabled={statusUpdatingId === activeCampaignData.id}
+                      className="w-full h-10 md:h-11 font-semibold rounded-lg transition-all text-sm md:text-base"
+                    >
+                      {statusUpdatingId === activeCampaignData.id ? (
+                        <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      ) : null}
+                      {activeCampaignData.status === "live" ? "Move to Draft" : "Publish Campaign"}
+                    </Button>
                     {activeCampaignData.status === 'live' && (
                       <Link href={`/campaign/${activeCampaignData.id}`}>
                         <Button 
@@ -1247,25 +1245,21 @@ export default function CampaignsPage() {
           <div className="grid grid-cols-1 gap-4">
             {filteredCampaigns.map((campaign) => {
               const fundingPercentage = campaign.funding_goal ? (campaign.current_funding || 0) / campaign.funding_goal * 100 : 0
+              const isPublished = campaign.status === "live"
 
               return (
-                <Card key={campaign.id} className="overflow-hidden hover:shadow-lg transition-all border border-neutral-200">
-                  <div className="flex flex-col md:flex-row">
-                    <div className="md:w-48 h-48 bg-gradient-to-br from-neutral-200 to-neutral-300 flex-shrink-0 relative overflow-hidden">
+                <Card key={campaign.id} className="overflow-hidden border border-neutral-200 bg-white shadow-sm transition-all hover:shadow-md">
+                  <div className="flex flex-col lg:flex-row">
+                    <div className="lg:w-56 h-56 bg-gradient-to-br from-neutral-200 via-neutral-100 to-neutral-300 flex-shrink-0 relative overflow-hidden">
                       {campaign.product_images && campaign.product_images.length > 0 ? (
                         (() => {
                           const img = campaign.product_images[0]
-                          
-                          // Handle both object format {url, path} and string format
                           let imagePath = typeof img === "object" ? (img.path || img.url) : img
 
-                          
-                          // Remove storage prefix if present and use API route
                           if (imagePath?.includes("storage/")) {
                             imagePath = imagePath.substring(imagePath.indexOf("storage/") + 8)
                           }
-                          
-                          // Construct API route URL for image proxy
+
                           const apiImageUrl = `/api/storage/${imagePath}`
 
                           return (
@@ -1277,74 +1271,84 @@ export default function CampaignsPage() {
                               onError={(e) => {
                                 e.currentTarget.src = "/placeholder.svg"
                               }}
-                              onLoad={() => {
-
-                              }}
                             />
                           )
                         })()
                       ) : (
                         <>
                           <img src="/placeholder.svg" alt={campaign.title} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 text-xs text-neutral-500">
-                            No images (product_images length: {campaign.product_images?.length || 0})
+                          <div className="absolute inset-0 flex items-center justify-center bg-neutral-100/90 text-xs text-neutral-500 px-3 text-center">
+                            No images available yet
                           </div>
                         </>
                       )}
-                      <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold ${campaign.status === "live" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
-                        {campaign.status === "live" ? "Live" : "Draft"}
+                      <div className={`absolute top-3 right-3 border px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeClasses(campaign.status)}`}>
+                        {getStatusLabel(campaign.status)}
                       </div>
                     </div>
-                    <div className="flex-1 p-6 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <h3 className="text-xl font-bold">{campaign.title}</h3>
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${campaign.status === "live" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}`}>
-                            {campaign.status === "live" ? "Live" : "Draft"}
-                          </span>
+
+                    <div className="flex-1 p-5 md:p-6 flex flex-col justify-between gap-4">
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <h3 className="text-xl font-bold text-neutral-900">{campaign.title}</h3>
+                            <p className="mt-1 text-sm text-neutral-600 line-clamp-2">{campaign.description || "A polished campaign ready for your audience."}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`border px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClasses(campaign.status)}`}>
+                              {getStatusLabel(campaign.status)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCampaignStatus(campaign)}
+                              disabled={statusUpdatingId === campaign.id}
+                              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${isPublished ? "bg-emerald-600" : "bg-slate-300"}`}
+                              aria-label={isPublished ? "Switch to draft" : "Switch to published"}
+                            >
+                              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isPublished ? "translate-x-7" : "translate-x-1"}`} />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="mb-3">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm font-semibold text-neutral-700">${(campaign.current_funding || 0).toLocaleString()} of ${campaign.funding_goal?.toLocaleString() || "0"}</span>
-                            <span className="text-sm font-bold text-blue-600">{Math.round(fundingPercentage)}%</span>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="bg-neutral-50 p-3 rounded-lg">
+                            <p className="text-xs font-semibold uppercase text-neutral-500">Raised</p>
+                            <p className="mt-1 text-lg font-bold text-neutral-900">${(campaign.current_funding || 0).toLocaleString()}</p>
                           </div>
-                          <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                          <div className="bg-neutral-50 p-3 rounded-lg">
+                            <p className="text-xs font-semibold uppercase text-neutral-500">Goal</p>
+                            <p className="mt-1 text-lg font-bold text-blue-600">${campaign.funding_goal?.toLocaleString() || "0"}</p>
+                          </div>
+                          <div className="bg-neutral-50 p-3 rounded-lg">
+                            <p className="text-xs font-semibold uppercase text-neutral-500">Created</p>
+                            <p className="mt-1 text-lg font-bold text-neutral-700">{new Date(campaign.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-neutral-700">Progress</span>
+                            <span className="text-sm font-semibold text-blue-600">{Math.round(fundingPercentage)}%</span>
+                          </div>
+                          <div className="h-2.5 w-full rounded-full bg-neutral-200">
                             <div
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all"
+                              className="h-2.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
                               style={{ width: `${Math.min(fundingPercentage, 100)}%` }}
                             />
                           </div>
                         </div>
-
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <p className="text-xs text-neutral-600 font-semibold mb-1">Status</p>
-                            <p className="text-lg font-bold text-neutral-900 capitalize">{campaign.status}</p>
-                          </div>
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <p className="text-xs text-neutral-600 font-semibold mb-1">Days Left</p>
-                            <p className="text-lg font-bold text-blue-600">{campaign.days_active || 0}</p>
-                          </div>
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <p className="text-xs text-neutral-600 font-semibold mb-1">Created</p>
-                            <p className="text-lg font-bold text-neutral-700">{new Date(campaign.created_at).toLocaleDateString()}</p>
-                          </div>
-                        </div>
                       </div>
-                      <div className="flex gap-3 pt-4">
+
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <Button variant="outline" className="flex-1 rounded-lg" onClick={() => setViewingCampaignId(campaign.id)}>
                           View Product
                         </Button>
-                        {campaign.status === "draft" && (
-                          <Button className="flex-1 bg-green-600 hover:bg-green-700 rounded-lg" onClick={() => handlePublishCampaign(campaign.id)}>
-                            <Flame className="w-4 h-4 mr-1" /> Publish
-                          </Button>
-                        )}
-                        <Button variant="outline" className="rounded-lg" onClick={() => handleEditCampaign(campaign)}>
+                        <Button variant="outline" className="flex-1 rounded-lg" onClick={() => handleEditCampaign(campaign)}>
                           <Edit2 className="w-4 h-4 mr-1" /> Edit
+                        </Button>
+                        <Button className={`flex-1 rounded-lg ${isPublished ? "bg-slate-700 hover:bg-slate-800" : "bg-emerald-600 hover:bg-emerald-700"}`} onClick={() => handleToggleCampaignStatus(campaign)} disabled={statusUpdatingId === campaign.id}>
+                          {statusUpdatingId === campaign.id ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : null}
+                          {isPublished ? "Move to Draft" : "Publish"}
                         </Button>
                       </div>
                     </div>

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DashboardProfileCard } from "@/components/dashboard-profile-card"
 import { ApiDiagnosticsPanel } from "@/components/api-diagnostics-panel"
+// Use proxy endpoints to avoid browser CORS: /api/creator/profile
 import { Edit2, Plus, X, Loader, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react"
 
 export default function SettingsPage() {
@@ -41,6 +42,7 @@ export default function SettingsPage() {
     mailingAddress: "",
     businessName: "",
     about: "",
+    publicProfileSlug: "",
     einNumber: "",
     businessRegistrationNumber: "",
     brandName: "",
@@ -49,6 +51,7 @@ export default function SettingsPage() {
     bankRoutingNumber: "",
     bankAccountNumber: "",
   })
+  const [originalData, setOriginalData] = useState<typeof settingsData | null>(null)
 
   // Redirect if not authenticated - but don't redirect based on role yet
   useEffect(() => {
@@ -67,7 +70,7 @@ export default function SettingsPage() {
 
       if (showLoadingState) setLoading(true)
       
-      const token = localStorage.getItem("auth_token")
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
       
       if (!token) {
         console.warn("No auth token found")
@@ -76,7 +79,7 @@ export default function SettingsPage() {
 
       console.log("Fetching creator profile...")
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/profile`, {
+      const response = await fetch(`/api/creator/profile`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -95,15 +98,17 @@ export default function SettingsPage() {
       const data = await response.json()
       console.log("Creator profile data:", data)
       
-      if (data.status && data.creator) {
-        const creator = data.creator
+      if (data.status && (data.creator || data.user)) {
+        const creator = data.creator || {}
+        const backendUser = data.user || {}
         const newData = {
-          fullName: user?.name || "",
-          email: user?.email || "",
+          fullName: backendUser.name || user?.name || "",
+          email: backendUser.email || user?.email || "",
           phone: creator?.phone || "",
           mailingAddress: creator?.address || "",
           businessName: creator.brand_name || "",
           about: creator.bio || creator.about || "",
+          publicProfileSlug: creator.slug || "",
           einNumber: "",
           businessRegistrationNumber: "",
           brandName: creator.brand_name || "",
@@ -155,10 +160,10 @@ export default function SettingsPage() {
     const autoRefresh = async () => {
       if (isMounted && !editingSettings && !hasUnsavedChanges) {
         try {
-          const token = localStorage.getItem("auth_token")
+          const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
           if (!token) return
 
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/profile`, {
+          const response = await fetch(`/api/creator/profile`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -177,6 +182,7 @@ export default function SettingsPage() {
                 mailingAddress: creator?.address || "",
                 businessName: creator.brand_name || "",
                 about: creator.bio || creator.about || "",
+                publicProfileSlug: creator.slug || "",
                 einNumber: "",
                 businessRegistrationNumber: "",
                 brandName: creator.brand_name || "",
@@ -302,7 +308,7 @@ export default function SettingsPage() {
       setError("")
       setSuccess("")
 
-      const token = localStorage.getItem("auth_token")
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
       
       if (!token) {
         setError("Authentication token not found. Please login again.")
@@ -335,6 +341,7 @@ export default function SettingsPage() {
         address: settingsData.mailingAddress,
         brand_name: settingsData.brandName,
         bio: settingsData.about,
+        slug: settingsData.publicProfileSlug?.trim(),
         bank_account: settingsData.bankAccountNumber,
         routing_number: settingsData.bankRoutingNumber,
         account_holder: settingsData.fullName,
@@ -351,10 +358,7 @@ export default function SettingsPage() {
       // Note: CSRF token not needed for Bearer token auth with API exemptions
 
       console.log("Request headers:", { ...headers, Authorization: "Bearer [token]" })
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/creator/profile`
-      console.log("Full API URL:", apiUrl)
-
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`/api/creator/profile`, {
         method: "PUT",
         headers,
         body: JSON.stringify(updatePayload),
@@ -391,13 +395,66 @@ export default function SettingsPage() {
 
       const data = JSON.parse(responseText)
       console.log("Save response data:", data)
-      
+
       if (data.status) {
         setSuccess("✓ Settings saved successfully!")
         setEditingSettings(false)
         setHasUnsavedChanges(false)
         setLastUpdated(new Date())
         setFieldErrors({})
+
+        // If backend returned updated creator data, update UI state
+        if ((data.creator && typeof data.creator === "object") || (data.user && typeof data.user === "object")) {
+          const creator = data.creator || {}
+          const backendUser = data.user || {}
+          const newData = {
+            fullName: backendUser.name || creator.name || settingsData.fullName,
+            email: backendUser.email || creator.email || settingsData.email,
+            phone: creator.phone || settingsData.phone,
+            mailingAddress: creator.address || settingsData.mailingAddress,
+            businessName: creator.brand_name || settingsData.businessName,
+            about: creator.bio || settingsData.about,
+            publicProfileSlug: creator.slug || settingsData.publicProfileSlug,
+            einNumber: settingsData.einNumber,
+            businessRegistrationNumber: settingsData.businessRegistrationNumber,
+            brandName: creator.brand_name || settingsData.brandName,
+            website: creator.website || settingsData.website,
+            jobTitle: creator.job_title || settingsData.jobTitle,
+            bankRoutingNumber: creator.routing_number || settingsData.bankRoutingNumber,
+            bankAccountNumber: creator.bank_account || settingsData.bankAccountNumber,
+          }
+
+          setSettingsData(newData)
+          setOriginalData(newData)
+
+          // Sync basic user info to localStorage so header/profile reflect changes
+          try {
+            const raw = localStorage.getItem("user")
+            if (raw) {
+              const storedUser = JSON.parse(raw)
+              let changed = false
+              if (backendUser.name && storedUser.name !== backendUser.name) { storedUser.name = backendUser.name; changed = true }
+              if (backendUser.email && storedUser.email !== backendUser.email) { storedUser.email = backendUser.email; changed = true }
+              // Fallback: if backendUser not present, try creator.account_holder for name
+              if (!backendUser.name && creator.account_holder && storedUser.name !== creator.account_holder) { storedUser.name = creator.account_holder; changed = true }
+              if (changed) {
+                localStorage.setItem("user", JSON.stringify(storedUser))
+                // notify other tabs/components
+                window.dispatchEvent(new CustomEvent("authChanged"))
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to sync local user after settings save", e)
+          }
+        } else {
+          // No creator object returned: re-fetch from server to ensure UI is fresh
+          try {
+            await fetchCreatorProfile(true)
+          } catch (e) {
+            console.warn("Refetch after save failed", e)
+          }
+        }
+
         setTimeout(() => setSuccess(""), 4000)
       } else {
         setError(data.message || "Failed to save settings")
@@ -408,13 +465,12 @@ export default function SettingsPage() {
       // Check if it's a network error or CORS error
       if (err instanceof TypeError) {
         if (err.message.includes("Failed to fetch")) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL
           setError(
             `Failed to fetch: Cannot connect to the backend server.\n\n` +
-            `Backend URL: ${apiUrl}\n\n` +
+            `Tried proxy endpoint: /api/creator/profile\n\n` +
             `Possible causes:\n` +
-            `• Laragon server is not running\n` +
-            `• Backend is not accessible at the configured URL\n` +
+            `• Backend server (Laravel) is not running\n` +
+            `• Backend is not accessible from the Next.js server\n` +
             `• Network or firewall blocking the connection`
           )
         } else {
@@ -454,8 +510,8 @@ export default function SettingsPage() {
     setSuccess("")
 
     try {
-      const token = localStorage.getItem("auth_token")
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/creator/change-password`, {
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
+      const response = await fetch(`/api/creator/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -498,21 +554,15 @@ export default function SettingsPage() {
     try {
       setError("")
       setSuccess("")
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      if (!apiUrl) {
-        setError("API URL not configured in environment variables")
-        return
-      }
-
-      const token = localStorage.getItem("auth_token")
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
       if (!token) {
         setError("No authentication token found. Please login first.")
         return
       }
 
       // Test GET request first
-      const testUrl = `${apiUrl}/creator/profile`
-      console.log("Testing GET connection to:", testUrl)
+      const testUrl = `/api/creator/profile`
+      console.log("Testing GET connection to (proxy):", testUrl)
       
       const getResponse = await fetch(testUrl, {
         method: "GET",
@@ -560,15 +610,15 @@ export default function SettingsPage() {
 
       if (putResponse.ok && putData.status) {
         setSuccess(
-          `✓ BOTH GET and PUT requests work!\n\n` +
-          `Server: ${apiUrl}\n` +
+          `✓ BOTH GET and PUT requests work via proxy!\n\n` +
+          `Proxy endpoint: /api/creator/profile\n` +
           `GET Status: 200 OK ✓\n` +
           `PUT Status: ${putResponse.status} OK ✓\n\n` +
           `Your settings should save properly now.`
         )
       } else if (!putResponse.ok) {
         setError(
-          `PUT request failed:\n\n` +
+          `PUT request failed via proxy:\n\n` +
           `Status: ${putResponse.status}\n` +
           `Response: ${putText.substring(0, 200)}\n\n` +
           `GET works but PUT doesn't. This might be a server configuration issue.`
@@ -582,17 +632,16 @@ export default function SettingsPage() {
       }
     } catch (err) {
       console.error("Backend connection test failed:", err)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      setError(
-        `Backend connection failed!\n\n` +
-        `Error: ${err instanceof Error ? err.message : "Unknown error"}\n\n` +
-        `Trying to reach: ${apiUrl}\n\n` +
-        `Please ensure:\n` +
-        `1. Laragon Apache server is running\n` +
-        `2. Backend URL is correct: ${apiUrl}\n` +
-        `3. No firewall is blocking the connection\n\n` +
-        `Check browser console (F12) for more details.`
-      )
+        setError(
+          `Backend connection failed via proxy!\n\n` +
+          `Error: ${err instanceof Error ? err.message : "Unknown error"}\n\n` +
+          `Tried proxy endpoint: /api/creator/profile\n\n` +
+          `Please ensure:\n` +
+          `1. Backend server (Laravel) is running and reachable from the Next.js server\n` +
+          `2. Backend API base URL is correctly configured in the Next server environment\n` +
+          `3. No firewall is blocking the connection\n\n` +
+          `Check server logs and browser console (F12) for more details.`
+        )
     }
   }
 
@@ -764,6 +813,11 @@ export default function SettingsPage() {
                 <div>
                   <Label className="font-semibold mb-2 block">Brand Name</Label>
                   <Input value={settingsData.brandName || ""} onChange={(e) => handleSettingsChange("brandName", e.target.value)} placeholder="Designer Creations" />
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Public Profile URL</Label>
+                  <Input value={settingsData.publicProfileSlug || ""} onChange={(e) => handleSettingsChange("publicProfileSlug", e.target.value)} placeholder="designer-name" />
+                  <p className="text-xs text-neutral-500 mt-1">Your public profile will be available at <span className="font-medium">/creators/{settingsData.publicProfileSlug || 'your-slug'}</span></p>
                 </div>
                 <div>
                   <Label className="font-semibold mb-2 block">Website</Label>

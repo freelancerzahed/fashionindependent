@@ -25,35 +25,37 @@ export function DashboardRecentCampaigns({ campaigns }: DashboardRecentCampaigns
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Campaigns</CardTitle>
+    <Card className="rounded-3xl border-0 bg-white shadow-[0_14px_36px_-20px_rgba(15,23,42,0.45)]">
+      <CardHeader className="px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
+        <CardTitle className="text-[1rem] font-bold text-slate-900 sm:text-xl">Recent Campaigns</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="px-3 pb-4 sm:px-5 sm:pb-5">
+        <div className="space-y-3">
           {campaigns.length === 0 ? (
             <p className="text-sm text-neutral-500">No campaigns yet. Start creating your first campaign!</p>
           ) : (
             campaigns.map((campaign) => (
               <Link key={campaign.id} href={`/campaign/${campaign.id}`}>
-                <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-neutral-50 transition-colors">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-sm">{campaign.title}</h3>
-                    <div className="flex items-center gap-4 mt-2">
-                      <div className="flex-1 bg-neutral-200 rounded-full h-2 max-w-xs">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${Math.min(fundingPercentage(campaign), 100)}%` }}
-                        />
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 transition-colors hover:bg-slate-100 sm:p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 sm:text-base">{campaign.title}</h3>
+                      <div className="mt-3 flex items-center gap-3">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+                          <div
+                            className="h-2 rounded-full bg-blue-600"
+                            style={{ width: `${Math.min(fundingPercentage(campaign), 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-600 sm:text-xs">{fundingPercentage(campaign)}%</span>
                       </div>
-                      <span className="text-xs text-neutral-600">{fundingPercentage(campaign)}%</span>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-600 sm:text-xs">
+                        <span>${campaign.fundedAmount.toLocaleString()} raised</span>
+                        <span>{campaign.backers} backers</span>
+                      </div>
                     </div>
-                    <div className="flex gap-4 mt-2 text-xs text-neutral-600">
-                      <span>${campaign.fundedAmount.toLocaleString()} raised</span>
-                      <span>{campaign.backers} backers</span>
-                    </div>
+                    <Badge variant={campaign.status === "live" ? "default" : "secondary"}>{campaign.status}</Badge>
                   </div>
-                  <Badge variant={campaign.status === "live" ? "default" : "secondary"}>{campaign.status}</Badge>
                 </div>
               </Link>
             ))

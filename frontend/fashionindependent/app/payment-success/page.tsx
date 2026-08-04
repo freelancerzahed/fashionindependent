@@ -82,7 +82,7 @@ export default function PaymentSuccessPage() {
                     <span className="text-muted-foreground">Campaign:</span> {campaign?.title}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Creator:</span> {campaign?.designer}
+                    <span className="text-muted-foreground">Creative:</span> {campaign?.designer}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Expected Delivery:</span> 60 days from campaign end

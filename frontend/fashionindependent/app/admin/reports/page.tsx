@@ -57,7 +57,7 @@ export default function AdminReportsPage() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-neutral-600">Creator Payouts</p>
+                <p className="text-sm text-neutral-600">Creative Payouts</p>
                 <p className="text-3xl font-bold">$28,125</p>
               </div>
               <Users className="h-8 w-8 text-neutral-400" />
@@ -88,7 +88,7 @@ export default function AdminReportsPage() {
                 <Legend />
                 <Bar dataKey="revenue" fill="#3b82f6" name="Total Revenue" />
                 <Bar dataKey="fees" fill="#ef4444" name="Platform Fees" />
-                <Bar dataKey="payouts" fill="#10b981" name="Creator Payouts" />
+                <Bar dataKey="payouts" fill="#10b981" name="Creative Payouts" />
               </BarChart>
             </ResponsiveContainer>
           </Card>

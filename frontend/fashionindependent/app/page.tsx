@@ -47,16 +47,11 @@ interface CampaignResponse {
   data: Campaign[]
 }
 
+import { BACKEND_URL } from "@/config"
+
 async function fetchCampaigns(): Promise<Campaign[]> {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL
-
-    if (!apiUrl) {
-      console.error("❌ API URL not configured")
-      return []
-    }
-
-    console.log("📡 Server: Fetching campaigns from", `${apiUrl}/campaign/active?per_page=6`)
+    const apiUrl = BACKEND_URL
 
     const response = await fetch(`${apiUrl}/campaign/active?per_page=6`, {
       method: "GET",
@@ -68,34 +63,24 @@ async function fetchCampaigns(): Promise<Campaign[]> {
     })
 
     if (!response.ok) {
-      console.error(`❌ API error: ${response.status}`)
       return []
     }
 
     const data: CampaignResponse = await response.json()
 
     if (data.status && Array.isArray(data.data)) {
-      console.log("✓ Successfully fetched", data.data.length, "campaigns for home")
       return data.data
     }
 
     return []
-  } catch (err) {
-    console.error("❌ Error fetching campaigns:", err)
+  } catch {
     return []
   }
 }
 
 async function fetchArticles(): Promise<BlogArticle[]> {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL
-
-    if (!apiUrl) {
-      console.error("❌ API URL not configured")
-      return []
-    }
-
-    console.log("📡 Server: Fetching latest articles from", `${apiUrl}/blog-list`)
+    const apiUrl = BACKEND_URL
 
     const response = await fetch(`${apiUrl}/blog-list?page=1`, {
       method: "GET",
@@ -107,20 +92,17 @@ async function fetchArticles(): Promise<BlogArticle[]> {
     })
 
     if (!response.ok) {
-      console.error(`❌ API error: ${response.status}`)
       return []
     }
 
     const data: BlogResponse = await response.json()
 
     if (data.result && data.blogs?.data && Array.isArray(data.blogs.data)) {
-      console.log("✓ Successfully fetched", data.blogs.data.length, "articles for home")
       return data.blogs.data.slice(0, 3)
     }
 
     return []
-  } catch (err) {
-    console.error("❌ Error fetching articles:", err)
+  } catch {
     return []
   }
 }

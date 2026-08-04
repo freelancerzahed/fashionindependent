@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,8 @@ import {
 import { Heart, Settings, LogOut, User, ChevronDown } from "lucide-react"
 import { useState, useEffect } from "react"
 
+const DASHBOARD_ROLE_EVENT = "dashboard-role-changed"
+
 interface DashboardSidebarProps {
   userRole?: "creator" | "backer"
 }
@@ -25,12 +27,13 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
   const role = userRole || user?.role
   const [activeRole, setActiveRole] = useState<"creator" | "backer" | null>(null)
 
   // Check if user has both roles
-  const hasCreatorRole = user?.role === "creator" || user?.roles?.includes("creator")
-  const hasBackerRole = user?.role === "backer" || user?.roles?.includes("backer")
+  const hasCreatorRole = user?.role === "creator" || Boolean(user?.roles?.includes("creator"))
+  const hasBackerRole = user?.role === "backer" || Boolean(user?.roles?.includes("backer"))
   const hasBothRoles = hasCreatorRole && hasBackerRole
 
   const creatorTabs = [
@@ -60,7 +63,8 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
     setActiveRole(newRole)
     if (typeof window !== "undefined") {
       localStorage.setItem("dashboardActiveRole", newRole)
-      window.location.reload()
+      window.dispatchEvent(new CustomEvent(DASHBOARD_ROLE_EVENT, { detail: newRole }))
+      router.push(newRole === "creator" ? "/dashboard" : "/dashboard/backer")
     }
   }
 
@@ -73,6 +77,20 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
         setActiveRole("creator")
       }
     }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const syncActiveRole = (event: Event) => {
+      const role = (event as CustomEvent).detail
+      if (role === "creator" || role === "backer") {
+        setActiveRole(role)
+      }
+    }
+
+    window.addEventListener(DASHBOARD_ROLE_EVENT, syncActiveRole as EventListener)
+    return () => window.removeEventListener(DASHBOARD_ROLE_EVENT, syncActiveRole as EventListener)
   }, [])
 
   if (!user) return null
@@ -90,7 +108,7 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
     : null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 sticky top-4 space-y-6 border border-neutral-100">
+    <div className="w-full min-w-0 overflow-hidden bg-white rounded-lg shadow-sm p-4 sm:p-6 md:sticky md:top-4 space-y-6 border border-neutral-100">
       {/* User Profile Card */}
       <div className="pb-6 border-b border-neutral-200">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -145,7 +163,7 @@ export function DashboardSidebar({ userRole }: DashboardSidebarProps) {
         </div>
 
         {/* Role Toggle Pill */}
-        {activeRole && (
+        {hasBothRoles && activeRole && (
           <RoleTogglePill 
             activeRole={activeRole} 
             onRoleChange={handleSwitchRole}

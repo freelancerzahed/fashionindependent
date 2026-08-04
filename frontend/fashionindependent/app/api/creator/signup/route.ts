@@ -9,13 +9,25 @@ export async function POST(req: Request) {
     console.log("[Creator Signup API] Forwarding to:", endpoint);
     console.log("[Creator Signup API] Request body:", { ...body, password: "***" });
 
+    const formData = new URLSearchParams();
+    for (const [key, value] of Object.entries(body || {})) {
+      if (value === undefined || value === null) continue;
+      if (typeof value === "boolean") {
+        formData.append(key, value ? "1" : "0");
+      } else if (typeof value === "object") {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
+      }
+    }
+
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
       },
-      body: JSON.stringify(body),
+      body: formData.toString(),
     });
 
     const contentType = res.headers.get("content-type") || "";
