@@ -1,0 +1,1169 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { DashboardProfileCard } from "@/components/dashboard-profile-card"
+import { ApiDiagnosticsPanel } from "@/components/api-diagnostics-panel"
+// Use proxy endpoints to avoid browser CORS: /api/creator/profile
+import { Edit2, Plus, X, Loader, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from "lucide-react"
+
+export default function SettingsPage() {
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const [editingSettings, setEditingSettings] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [socialLinks, setSocialLinks] = useState(["", "", ""])
+  const [brandNames, setBrandNames] = useState([""])
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    current: "",
+    new: "",
+    confirm: ""
+  })
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({})
+  const [settingsData, setSettingsData] = useState({
+    fullName: user?.name || "",
+    email: user?.email || "",
+    phone: "",
+    mailingAddress: "",
+    businessName: "",
+    about: "",
+    publicProfileSlug: "",
+    einNumber: "",
+    businessRegistrationNumber: "",
+    brandName: "",
+    website: "",
+    jobTitle: "",
+    bankRoutingNumber: "",
+    bankAccountNumber: "",
+  })
+  const [originalData, setOriginalData] = useState<typeof settingsData | null>(null)
+
+  // Redirect if not authenticated - but don't redirect based on role yet
+  useEffect(() => {
+    // Only redirect to login if auth is done loading AND there's definitely no user
+    if (!isLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isLoading, router])
+
+  // Fetch creator profile data - only for creators
+  const fetchCreatorProfile = useCallback(async (showLoadingState = false) => {
+    try {
+      if (!user || user.role !== "creator") {
+        return
+      }
+
+      if (showLoadingState) setLoading(true)
+      
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
+      
+      if (!token) {
+        console.warn("No auth token found")
+        return
+      }
+
+      console.log("Fetching creator profile...")
+      
+      const response = await fetch(`/api/creator/profile`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log("Creator profile response status:", response.status)
+
+      if (!response.ok) {
+        console.warn("Profile fetch failed:", response.status)
+        // Don't show error for background fetch - just keep original data
+        return
+      }
+
+      const data = await response.json()
+      console.log("Creator profile data:", data)
+      
+      if (data.status && (data.creator || data.user)) {
+        const creator = data.creator || {}
+        const backendUser = data.user || {}
+        const newData = {
+          fullName: backendUser.name || user?.name || "",
+          email: backendUser.email || user?.email || "",
+          phone: creator?.phone || "",
+          mailingAddress: creator?.address || "",
+          businessName: creator.brand_name || "",
+          about: creator.bio || creator.about || "",
+          publicProfileSlug: creator.slug || "",
+          einNumber: "",
+          businessRegistrationNumber: "",
+          brandName: creator.brand_name || "",
+          website: creator.website || "",
+          jobTitle: creator.job_title || "",
+          bankRoutingNumber: creator.routing_number || "",
+          bankAccountNumber: creator.bank_account || "",
+        }
+        setSettingsData(newData)
+        setOriginalData(newData)
+        setLastUpdated(new Date())
+        setHasUnsavedChanges(false)
+        console.log("Profile loaded successfully")
+      }
+    } catch (err) {
+      console.warn("Error fetching creator profile:", err)
+      // Don't show error for background fetch
+    } finally {
+      if (showLoadingState) setLoading(false)
+    }
+  }, [user?.name, user?.email, user?.role])
+
+  // Initial fetch on mount - only for creators (non-blocking)
+  useEffect(() => {
+    if (user && user.role === "creator") {
+      // Don't show loading state - just fetch in background
+      fetchCreatorProfile(false)
+      setLoading(false) // Show form immediately
+    } else if (!isLoading && user) {
+      setLoading(false)
+    }
+  }, [user?.role, isLoading, fetchCreatorProfile])
+
+  // Auto-refresh profile every 30 seconds (separate from main fetch) - only for creators
+  useEffect(() => {
+    // Only for creators
+    if (!user || user.role !== "creator") {
+      return
+    }
+
+    // Don't set up auto-refresh while editing
+    if (editingSettings || hasUnsavedChanges) {
+      return
+    }
+
+    let isMounted = true
+    let refreshTimer: NodeJS.Timeout
+
+    const autoRefresh = async () => {
+      if (isMounted && !editingSettings && !hasUnsavedChanges) {
+        try {
+          const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
+          if (!token) return
+
+          const response = await fetch(`/api/creator/profile`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (response.ok && isMounted) {
+            const data = await response.json()
+            if (data.status && data.creator) {
+              const creator = data.creator
+              const newData = {
+                fullName: user?.name || "",
+                email: user?.email || "",
+                phone: creator?.phone || "",
+                mailingAddress: creator?.address || "",
+                businessName: creator.brand_name || "",
+                about: creator.bio || creator.about || "",
+                publicProfileSlug: creator.slug || "",
+                einNumber: "",
+                businessRegistrationNumber: "",
+                brandName: creator.brand_name || "",
+                website: creator.website || "",
+                jobTitle: creator.job_title || "",
+                bankRoutingNumber: creator.routing_number || "",
+                bankAccountNumber: creator.bank_account || "",
+              }
+              setSettingsData(newData)
+              setLastUpdated(new Date())
+              console.log("Auto-refresh completed successfully")
+            }
+          }
+        } catch (err) {
+          console.error("Auto-refresh error:", err)
+        }
+      }
+    }
+
+    // Set up interval for auto-refresh every 30 seconds
+    refreshTimer = setInterval(autoRefresh, 30000)
+
+    return () => {
+      isMounted = false
+      clearInterval(refreshTimer)
+    }
+  }, [editingSettings, hasUnsavedChanges, user?.role, user?.email, user?.name])
+
+  const handleSettingsChange = (field: string, value: any) => {
+    setSettingsData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+    setHasUnsavedChanges(true)
+    
+    // Clear field error when user starts editing
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev }
+        delete updated[field]
+        return updated
+      })
+    }
+
+    // Real-time validation
+    validateField(field, value)
+  }
+
+  // Validate individual fields
+  const validateField = (field: string, value: any): boolean => {
+    let isValid = true
+    const errors: Record<string, string> = { ...fieldErrors }
+
+    switch (field) {
+      case "email":
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errors.email = "Please enter a valid email address"
+          isValid = false
+        } else {
+          delete errors.email
+        }
+        break
+      case "phone":
+        if (value && !/^\+?[\d\s\-()]{10,}$/.test(value.replace(/\s/g, ""))) {
+          errors.phone = "Please enter a valid phone number"
+          isValid = false
+        } else {
+          delete errors.phone
+        }
+        break
+      case "website":
+        if (value && !/^https?:\/\/.+\..+/i.test(value)) {
+          errors.website = "Please enter a valid website URL (start with http:// or https://)"
+          isValid = false
+        } else {
+          delete errors.website
+        }
+        break
+    }
+
+    setFieldErrors(errors)
+    return isValid
+  }
+
+  // Validate all fields before saving
+  const validateAllFields = (): boolean => {
+    let isValid = true
+    const errors: Record<string, string> = {}
+
+    if (!settingsData.fullName?.trim()) {
+      errors.fullName = "Full name is required"
+      isValid = false
+    }
+    if (!settingsData.email?.trim()) {
+      errors.email = "Email is required"
+      isValid = false
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(settingsData.email)) {
+      errors.email = "Please enter a valid email address"
+      isValid = false
+    }
+    if (settingsData.phone && !/^\+?[\d\s\-()]{10,}$/.test(settingsData.phone.replace(/\s/g, ""))) {
+      errors.phone = "Please enter a valid phone number"
+      isValid = false
+    }
+    if (settingsData.website && !/^https?:\/\/.+\..+/i.test(settingsData.website)) {
+      errors.website = "Please enter a valid website URL"
+      isValid = false
+    }
+
+    setFieldErrors(errors)
+    return isValid
+  }
+
+  const handleSaveSettings = async () => {
+    try {
+      // Validate all fields before saving
+      if (!validateAllFields()) {
+        setError("Please fix the errors below before saving")
+        return
+      }
+
+      setSaving(true)
+      setError("")
+      setSuccess("")
+
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
+      
+      if (!token) {
+        setError("Authentication token not found. Please login again.")
+        setSaving(false)
+        return
+      }
+
+      // Function to extract CSRF token from cookie
+      const getCsrfToken = () => {
+        const name = "XSRF-TOKEN"
+        const decodedCookies = decodeURIComponent(document.cookie)
+        const cookieArray = decodedCookies.split(";")
+        
+        for (let cookie of cookieArray) {
+          cookie = cookie.trim()
+          if (cookie.startsWith(name + "=")) {
+            return cookie.substring(name.length + 1)
+          }
+        }
+        
+        // Fallback: check common Laravel CSRF cookie names
+        const csrfMatch = document.cookie.match(/(XSRF-TOKEN|csrf-token)=([^;]+)/)
+        return csrfMatch ? decodeURIComponent(csrfMatch[2]) : null
+      }
+
+      const updatePayload = {
+        name: settingsData.fullName,
+        email: settingsData.email,
+        phone: settingsData.phone,
+        address: settingsData.mailingAddress,
+        brand_name: settingsData.brandName,
+        bio: settingsData.about,
+        slug: settingsData.publicProfileSlug?.trim(),
+        bank_account: settingsData.bankAccountNumber,
+        routing_number: settingsData.bankRoutingNumber,
+        account_holder: settingsData.fullName,
+      }
+
+      console.log("Saving settings with payload:", updatePayload)
+
+      // Build headers
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      }
+
+      // Note: CSRF token not needed for Bearer token auth with API exemptions
+
+      console.log("Request headers:", { ...headers, Authorization: "Bearer [token]" })
+      const response = await fetch(`/api/creator/profile`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(updatePayload),
+      })
+
+      console.log("Save response status:", response.status)
+      console.log("Save response headers:", {
+        "content-type": response.headers.get("content-type"),
+        "access-control-allow-origin": response.headers.get("access-control-allow-origin"),
+      })
+      
+      const responseText = await response.text()
+      console.log("Save response text:", responseText)
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type")
+        let errorData: any = { message: `API Error: ${response.status}` }
+        
+        try {
+          // Only try to parse as JSON if response is JSON
+          if (contentType?.includes("application/json")) {
+            errorData = JSON.parse(responseText)
+          } else {
+            errorData = { message: `Server error: ${response.status} ${response.statusText}` }
+          }
+        } catch (parseErr) {
+          console.error("Could not parse error response:", responseText)
+          errorData = { message: `Server error: ${response.status} ${response.statusText}` }
+        }
+        
+        console.error("Save API Error:", errorData)
+        throw new Error(errorData.message || `Save failed: ${response.status}`)
+      }
+
+      const data = JSON.parse(responseText)
+      console.log("Save response data:", data)
+
+      if (data.status) {
+        setSuccess("✓ Settings saved successfully!")
+        setEditingSettings(false)
+        setHasUnsavedChanges(false)
+        setLastUpdated(new Date())
+        setFieldErrors({})
+
+        // If backend returned updated creator data, update UI state
+        if ((data.creator && typeof data.creator === "object") || (data.user && typeof data.user === "object")) {
+          const creator = data.creator || {}
+          const backendUser = data.user || {}
+          const newData = {
+            fullName: backendUser.name || creator.name || settingsData.fullName,
+            email: backendUser.email || creator.email || settingsData.email,
+            phone: creator.phone || settingsData.phone,
+            mailingAddress: creator.address || settingsData.mailingAddress,
+            businessName: creator.brand_name || settingsData.businessName,
+            about: creator.bio || settingsData.about,
+            publicProfileSlug: creator.slug || settingsData.publicProfileSlug,
+            einNumber: settingsData.einNumber,
+            businessRegistrationNumber: settingsData.businessRegistrationNumber,
+            brandName: creator.brand_name || settingsData.brandName,
+            website: creator.website || settingsData.website,
+            jobTitle: creator.job_title || settingsData.jobTitle,
+            bankRoutingNumber: creator.routing_number || settingsData.bankRoutingNumber,
+            bankAccountNumber: creator.bank_account || settingsData.bankAccountNumber,
+          }
+
+          setSettingsData(newData)
+          setOriginalData(newData)
+
+          // Sync basic user info to localStorage so header/profile reflect changes
+          try {
+            const raw = localStorage.getItem("user")
+            if (raw) {
+              const storedUser = JSON.parse(raw)
+              let changed = false
+              if (backendUser.name && storedUser.name !== backendUser.name) { storedUser.name = backendUser.name; changed = true }
+              if (backendUser.email && storedUser.email !== backendUser.email) { storedUser.email = backendUser.email; changed = true }
+              // Fallback: if backendUser not present, try creator.account_holder for name
+              if (!backendUser.name && creator.account_holder && storedUser.name !== creator.account_holder) { storedUser.name = creator.account_holder; changed = true }
+              if (changed) {
+                localStorage.setItem("user", JSON.stringify(storedUser))
+                // notify other tabs/components
+                window.dispatchEvent(new CustomEvent("authChanged"))
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to sync local user after settings save", e)
+          }
+        } else {
+          // No creator object returned: re-fetch from server to ensure UI is fresh
+          try {
+            await fetchCreatorProfile(true)
+          } catch (e) {
+            console.warn("Refetch after save failed", e)
+          }
+        }
+
+        setTimeout(() => setSuccess(""), 4000)
+      } else {
+        setError(data.message || "Failed to save settings")
+      }
+    } catch (err) {
+      console.error("Error saving settings:", err)
+      
+      // Check if it's a network error or CORS error
+      if (err instanceof TypeError) {
+        if (err.message.includes("Failed to fetch")) {
+          setError(
+            `Failed to fetch: Cannot connect to the backend server.\n\n` +
+            `Tried proxy endpoint: /api/creator/profile\n\n` +
+            `Possible causes:\n` +
+            `• Backend server (Laravel) is not running\n` +
+            `• Backend is not accessible from the Next.js server\n` +
+            `• Network or firewall blocking the connection`
+          )
+        } else {
+          setError(`Network error: ${err.message}`)
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to save settings. Please try again.")
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Discard changes and reload original data
+  const handleDiscardChanges = () => {
+    if (originalData) {
+      setSettingsData(originalData)
+      setEditingSettings(false)
+      setHasUnsavedChanges(false)
+      setFieldErrors({})
+    }
+  }
+
+  // Change password
+  const handleChangePassword = async () => {
+    const errors: Record<string, string> = {}
+    if (!passwordData.current) errors.current = "Current password is required"
+    if (!passwordData.new) errors.new = "New password is required"
+    else if (passwordData.new.length < 8) errors.new = "Password must be at least 8 characters"
+    if (!passwordData.confirm) errors.confirm = "Please confirm new password"
+    else if (passwordData.new !== passwordData.confirm) errors.confirm = "Passwords do not match"
+    setPasswordErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
+    setChangingPassword(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
+      const response = await fetch(`/api/creator/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: passwordData.current,
+          password: passwordData.new,
+          password_confirmation: passwordData.confirm,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setSuccess("Password changed successfully!")
+        setShowChangePassword(false)
+        setPasswordData({ current: "", new: "", confirm: "" })
+        setPasswordErrors({})
+        setTimeout(() => setSuccess(""), 4000)
+      } else {
+        const data = await response.json()
+        setError(data.message || "Failed to change password")
+      }
+    } catch (err) {
+      setError("Failed to change password. Please try again.")
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  // Manual refresh
+  const handleManualRefresh = async () => {
+    if (!hasUnsavedChanges) {
+      await fetchCreatorProfile()
+    }
+  }
+
+  // Test backend connectivity
+  const testBackendConnection = async () => {
+    try {
+      setError("")
+      setSuccess("")
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("sanctum_token") || localStorage.getItem("token")
+      if (!token) {
+        setError("No authentication token found. Please login first.")
+        return
+      }
+
+      // Test GET request first
+      const testUrl = `/api/creator/profile`
+      console.log("Testing GET connection to (proxy):", testUrl)
+      
+      const getResponse = await fetch(testUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log("Backend GET test response status:", getResponse.status)
+      const getData = await getResponse.json()
+      console.log("Backend GET test response:", getData)
+
+      if (!getResponse.ok || !getData.status) {
+        setError(
+          `GET request test failed:\n\n` +
+          `Status: ${getResponse.status}\n` +
+          `Message: ${getData.message || "Unknown error"}`
+        )
+        return
+      }
+
+      // Now test PUT request
+      console.log("Testing PUT connection to:", testUrl)
+      
+      const putResponse = await fetch(testUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bio: "test" }), // Minimal test payload
+      })
+
+      console.log("Backend PUT test response status:", putResponse.status)
+      const putText = await putResponse.text()
+      console.log("Backend PUT test response text:", putText)
+      
+      let putData: any = {}
+      try {
+        putData = JSON.parse(putText)
+      } catch (e) {
+        putData = { error: "Could not parse response" }
+      }
+
+      if (putResponse.ok && putData.status) {
+        setSuccess(
+          `✓ BOTH GET and PUT requests work via proxy!\n\n` +
+          `Proxy endpoint: /api/creator/profile\n` +
+          `GET Status: 200 OK ✓\n` +
+          `PUT Status: ${putResponse.status} OK ✓\n\n` +
+          `Your settings should save properly now.`
+        )
+      } else if (!putResponse.ok) {
+        setError(
+          `PUT request failed via proxy:\n\n` +
+          `Status: ${putResponse.status}\n` +
+          `Response: ${putText.substring(0, 200)}\n\n` +
+          `GET works but PUT doesn't. This might be a server configuration issue.`
+        )
+      } else {
+        setError(
+          `PUT returned unexpected response:\n\n` +
+          `Status: ${putResponse.status}\n` +
+          `Message: ${putData.message || "Unknown error"}`
+        )
+      }
+    } catch (err) {
+      console.error("Backend connection test failed:", err)
+        setError(
+          `Backend connection failed via proxy!\n\n` +
+          `Error: ${err instanceof Error ? err.message : "Unknown error"}\n\n` +
+          `Tried proxy endpoint: /api/creator/profile\n\n` +
+          `Please ensure:\n` +
+          `1. Backend server (Laravel) is running and reachable from the Next.js server\n` +
+          `2. Backend API base URL is correctly configured in the Next server environment\n` +
+          `3. No firewall is blocking the connection\n\n` +
+          `Check server logs and browser console (F12) for more details.`
+        )
+    }
+  }
+
+
+  // Show loading state while authenticating
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <Loader className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-600" />
+          <p className="text-neutral-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only render for authenticated users
+  if (!user) {
+    return null
+  }
+
+  // For non-creators, show the creator settings anyway 
+  // (they can't save, but can see the form)
+  // If you want to restrict access, handle it at the layout level
+
+  return (
+    <div className="space-y-6">
+      {/* Profile Picture Section */}
+      <DashboardProfileCard />
+
+      {/* Account Settings Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Account Settings</h2>
+          {lastUpdated && !hasUnsavedChanges && (
+            <p className="text-xs text-neutral-500 mt-1">
+              Last updated: {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          )}
+          {hasUnsavedChanges && (
+            <p className="text-xs text-orange-600 font-semibold mt-1 flex items-center gap-1">
+              ⚠️ You have unsaved changes
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {!editingSettings && !loading && (
+            <>
+              <Button 
+                onClick={handleManualRefresh} 
+                variant="outline" 
+                size="sm"
+                disabled={hasUnsavedChanges}
+                title="Refresh settings from server"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+              <Button onClick={() => setEditingSettings(true)} variant="outline">
+                <Edit2 className="w-4 h-4 mr-2" />
+                Edit Settings
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Card className="p-4 bg-red-50 border border-red-200">
+          <div className="flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-900 text-sm font-semibold">Error</p>
+              <p className="text-red-800 text-sm whitespace-pre-wrap mt-1">{error}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Success Alert */}
+      {success && (
+        <Card className="p-4 bg-green-50 border border-green-200">
+          <div className="flex gap-2">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <p className="text-green-800 text-sm font-semibold">{success}</p>
+          </div>
+        </Card>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <Card className="p-12 text-center">
+          <Loader className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-600" />
+          <p className="text-neutral-600">Loading settings...</p>
+          <p className="text-xs text-neutral-500 mt-2">If this takes longer than 5 seconds, there might be a connection issue.</p>
+        </Card>
+      ) : editingSettings ? (
+        <Card className="p-8">
+          <div className="space-y-6">
+            {/* Personal Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Personal Information *</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold mb-2 block">Full Name *</Label>
+                  <Input 
+                    value={settingsData.fullName} 
+                    onChange={(e) => handleSettingsChange("fullName", e.target.value)} 
+                    placeholder="John Designer"
+                    className={fieldErrors.fullName ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.fullName && <p className="text-xs text-red-600 mt-1">{fieldErrors.fullName}</p>}
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Email Address *</Label>
+                  <Input 
+                    type="email" 
+                    value={settingsData.email} 
+                    onChange={(e) => handleSettingsChange("email", e.target.value)} 
+                    placeholder="john@example.com"
+                    className={fieldErrors.email ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.email && <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>}
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Phone Number</Label>
+                  <Input 
+                    value={settingsData.phone} 
+                    onChange={(e) => handleSettingsChange("phone", e.target.value)} 
+                    placeholder="+1 (555) 123-4567"
+                    className={fieldErrors.phone ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.phone && <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>}
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Mailing Address</Label>
+                  <Input value={settingsData.mailingAddress} onChange={(e) => handleSettingsChange("mailingAddress", e.target.value)} placeholder="123 Fashion St, New York, NY 10001" />
+                </div>
+              </div>
+            </div>
+
+            {/* Business Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Business Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold mb-2 block">Business Name</Label>
+                  <Input value={settingsData.businessName} onChange={(e) => handleSettingsChange("businessName", e.target.value)} placeholder="Arturo's Brick & Masonry LLC" />
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">EIN Number</Label>
+                  <Input value={settingsData.einNumber || ""} onChange={(e) => handleSettingsChange("einNumber", e.target.value)} placeholder="12-3456789" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="font-semibold mb-2 block">About Your Business</Label>
+                  <textarea 
+                    value={settingsData.about || ""} 
+                    onChange={(e) => handleSettingsChange("about", e.target.value)} 
+                    placeholder="Tell us about your business, your story, and what makes you unique..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">Share your brand story and what makes your business unique</p>
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Business Registration Number</Label>
+                  <Input value={settingsData.businessRegistrationNumber || ""} onChange={(e) => handleSettingsChange("businessRegistrationNumber", e.target.value)} placeholder="For non-U.S. based companies" />
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Brand Name</Label>
+                  <Input value={settingsData.brandName || ""} onChange={(e) => handleSettingsChange("brandName", e.target.value)} placeholder="Designer Creations" />
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Public Profile URL</Label>
+                  <Input value={settingsData.publicProfileSlug || ""} onChange={(e) => handleSettingsChange("publicProfileSlug", e.target.value)} placeholder="designer-name" />
+                  <p className="text-xs text-neutral-500 mt-1">Your public profile will be available at <span className="font-medium">/creators/{settingsData.publicProfileSlug || 'your-slug'}</span></p>
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Website</Label>
+                  <Input 
+                    value={settingsData.website || ""} 
+                    onChange={(e) => handleSettingsChange("website", e.target.value)} 
+                    placeholder="https://www.designercreations.com"
+                    className={fieldErrors.website ? "border-red-500" : ""}
+                  />
+                  {fieldErrors.website && <p className="text-xs text-red-600 mt-1">{fieldErrors.website}</p>}
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Job Title *</Label>
+                  <select value={settingsData.jobTitle || ""} onChange={(e) => handleSettingsChange("jobTitle", e.target.value)} className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select a job title</option>
+                    <option value="ceo">CEO</option>
+                    <option value="coo">COO</option>
+                    <option value="cto">CTO</option>
+                    <option value="business-owner">Business Owner</option>
+                    <option value="president">President</option>
+                    <option value="senior-management">Senior Management</option>
+                    <option value="fashion-designer">Fashion Designer</option>
+                    <option value="graphic-designer">Graphic Designer</option>
+                    <option value="photographer">Photographer</option>
+                    <option value="seamstress">Seamstress</option>
+                    <option value="pattern-maker">Pattern Maker</option>
+                    <option value="technical-designer">Technical Designer</option>
+                    <option value="cad-designer">CAD Designer</option>
+                    <option value="model">Model</option>
+                    <option value="screen-printer">Screen Printer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Branding */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Branding</h3>
+              <div className="space-y-3">
+                {brandNames.map((name, index) => (
+                  <div key={index}>
+                    <Label className="font-semibold mb-2 block">
+                      {index === 0 ? 'Primary Brand Name' : `Additional Brand Name ${index}`}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={name}
+                        onChange={(e) => {
+                          const newNames = [...brandNames]
+                          newNames[index] = e.target.value
+                          setBrandNames(newNames)
+                        }}
+                        placeholder={index === 0 ? 'Primary brand name' : 'Additional brand name'}
+                      />
+                      {index > 0 && (
+                        <Button
+                          onClick={() => {
+                            setBrandNames(brandNames.filter((_, i) => i !== index))
+                          }}
+                          variant="outline"
+                          className="text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <Button onClick={() => setBrandNames([...brandNames, ""])} variant="outline" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Brand Name
+                </Button>
+              </div>
+            </div>
+
+            {/* General Settings */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">General Settings</h3>
+              <div className="space-y-4">
+                {/* Change Password */}
+                <div>
+                  <Button onClick={() => setShowChangePassword(!showChangePassword)} variant="outline" className="w-full justify-start">
+                    Change Password
+                  </Button>
+                  {showChangePassword && (
+                    <div className="mt-4 p-4 border rounded-lg space-y-3">
+                      <div>
+                        <Label className="font-semibold mb-2 block">Current Password</Label>
+                        <Input
+                          type="password"
+                          value={passwordData.current}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, current: e.target.value }))}
+                        />
+                        {passwordErrors.current && <p className="text-xs text-red-600 mt-1">{passwordErrors.current}</p>}
+                      </div>
+                      <div>
+                        <Label className="font-semibold mb-2 block">New Password</Label>
+                        <Input
+                          type="password"
+                          value={passwordData.new}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, new: e.target.value }))}
+                        />
+                        {passwordErrors.new && <p className="text-xs text-red-600 mt-1">{passwordErrors.new}</p>}
+                      </div>
+                      <div>
+                        <Label className="font-semibold mb-2 block">Confirm New Password</Label>
+                        <Input
+                          type="password"
+                          value={passwordData.confirm}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))}
+                        />
+                        {passwordErrors.confirm && <p className="text-xs text-red-600 mt-1">{passwordErrors.confirm}</p>}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleChangePassword} disabled={changingPassword}>
+                          {changingPassword ? (
+                            <>
+                              <Loader className="w-4 h-4 mr-2 animate-spin" />
+                              Changing...
+                            </>
+                          ) : (
+                            "Change Password"
+                          )}
+                        </Button>
+                        <Button onClick={() => { setShowChangePassword(false); setPasswordData({current:'',new:'',confirm:''}); setPasswordErrors({}) }} variant="outline">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Privacy Setting */}
+                <div>
+                  <Button variant="outline" className="w-full justify-start" disabled>
+                    Privacy Setting <span className="ml-auto text-neutral-500">Coming Soon</span>
+                  </Button>
+                </div>
+                {/* Deactivate Account */}
+                <div>
+                  <Button variant="outline" className="w-full justify-start text-red-600" disabled>
+                    Deactivate Account <span className="ml-auto text-neutral-500">Coming Soon</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Web & Social Links */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Web & Social Links (Optional)</h3>
+              <div className="space-y-3">
+                {socialLinks.map((link, index) => (
+                  <div key={index}>
+                    <Label className="font-semibold mb-2 block">
+                      {index < 3 ? `Webpage URL ${index + 1}` : `Additional Webpage URL ${index - 2}`}
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={link}
+                        onChange={(e) => {
+                          const newLinks = [...socialLinks]
+                          newLinks[index] = e.target.value
+                          setSocialLinks(newLinks)
+                        }}
+                        placeholder={`https://yourwebsite.com or https://instagram.com/yourprofile`}
+                      />
+                      {index >= 3 && (
+                        <Button
+                          onClick={() => {
+                            setSocialLinks(socialLinks.filter((_, i) => i !== index))
+                          }}
+                          variant="outline"
+                          className="text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <Button onClick={() => setSocialLinks([...socialLinks, ""])} variant="outline" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Webpage / URL
+                </Button>
+              </div>
+            </div>
+
+            {/* Banking Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-blue-600">Banking Information (Encrypted) *</h3>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-800">🔒 Your banking information will be encrypted and securely stored.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-semibold mb-2 block">Bank Routing Number *</Label>
+                  <Input type="password" value={settingsData.bankRoutingNumber || ""} onChange={(e) => handleSettingsChange("bankRoutingNumber", e.target.value)} placeholder="Enter your bank routing number" />
+                </div>
+                <div>
+                  <Label className="font-semibold mb-2 block">Bank Account Number *</Label>
+                  <Input type="password" value={settingsData.bankAccountNumber || ""} onChange={(e) => handleSettingsChange("bankAccountNumber", e.target.value)} placeholder="Enter your bank account number" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-6 border-t">
+              <Button onClick={handleSaveSettings} className="flex-1" disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+              <Button onClick={handleDiscardChanges} variant="outline" className="flex-1" disabled={saving}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Personal Information</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-neutral-600">Full Name</p>
+                <p className="font-semibold">{settingsData.fullName}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Email Address</p>
+                <p className="font-semibold">{settingsData.email}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Phone Number</p>
+                <p className="font-semibold">{settingsData.phone}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Mailing Address</p>
+                <p className="font-semibold">{settingsData.mailingAddress}</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Business Information</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-neutral-600">Business Name</p>
+                <p className="font-semibold">{settingsData.businessName || "—"}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Brand Name</p>
+                <p className="font-semibold">{settingsData.brandName || "—"}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Job Title</p>
+                <p className="font-semibold capitalize">{(settingsData.jobTitle || "").replace("-", " ")}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Website</p>
+                <p className="font-semibold">{settingsData.website || "—"}</p>
+              </div>
+              {settingsData.about && (
+                <div>
+                  <p className="text-neutral-600">About Your Business</p>
+                  <p className="font-semibold whitespace-pre-wrap leading-relaxed">{settingsData.about}</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Branding</h3>
+            <div className="space-y-2 text-sm">
+              {brandNames.filter((name) => name).length > 0 ? (
+                brandNames.map((name, index) =>
+                  name ? (
+                    <div key={index}>
+                      <p className="text-neutral-600">{index === 0 ? 'Primary Brand Name' : `Brand Name ${index + 1}`}</p>
+                      <p className="font-semibold">{name}</p>
+                    </div>
+                  ) : null
+                )
+              ) : (
+                <p className="text-neutral-600">No brand names added</p>
+              )}
+            </div>
+          </Card>
+            
+          {/*Web & Social Links */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Web & Social Links</h3>
+            <div className="space-y-2 text-sm">
+              {socialLinks.filter((l) => l).length > 0 ? (
+                socialLinks.map((link, index) =>
+                  link ? (
+                    <div key={index}>
+                      <p className="text-neutral-600">Link {index + 1}</p>
+                      <a href={link} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline">
+                        {link}
+                      </a>
+                    </div>
+                  ) : null
+                )
+              ) : (
+                <p className="text-neutral-600">No social links added</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4">Business Details</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-neutral-600">EIN Number</p>
+                <p className="font-semibold">{settingsData.einNumber || "—"}</p>
+              </div>
+              <div>
+                <p className="text-neutral-600">Business Registration Number</p>
+                <p className="font-semibold">{settingsData.businessRegistrationNumber || "—"}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* API Diagnostics Section - for troubleshooting */}
+      <Card className="p-0 border-0 shadow-none">
+        <button
+          onClick={() => setShowDiagnostics(!showDiagnostics)}
+          className="w-full p-6 flex items-center justify-between hover:bg-neutral-50 rounded-lg border transition-colors"
+        >
+          <span className="font-semibold text-neutral-700">Profile Picture Upload Issues? 🔧</span>
+          <ChevronDown
+            className={`w-5 h-5 text-neutral-600 transition-transform ${showDiagnostics ? "rotate-180" : ""}`}
+          />
+        </button>
+        {showDiagnostics && (
+          <div className="px-6 pb-6 border-t border-neutral-200">
+            <ApiDiagnosticsPanel />
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}

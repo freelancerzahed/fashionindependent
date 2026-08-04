@@ -1,0 +1,79 @@
+﻿
+[previous exception] [object] (PDOException(code: 1524): SQLSTATE[HY000] 
+[1524] Plugin 'mysql_native_password' is not loaded at E:\\laragon\\www\\mirror
+mefashion\\vendor\\laravel\\framework\\src\\Illuminate\\Database\\Connectors\\C
+onnector.php:65)
+[stacktrace]
+#51 E:\\laragon\\www\\mirrormefashion\\vendor\\laravel\\framework\\src\\Illumin
+ate\\View\\Middleware\\ShareErrorsFromSession.php(49): Illuminate\\Pipeline\\Pi
+peline->Illuminate\\Pipeline\\{closure}(Object(Illuminate\\Http\\Request))
+#52 E:\\laragon\\www\\mirrormefashion\\vendor\\laravel\\framework\\src\\Illumin
+ate\\Pipeline\\Pipeline.php(183): Illuminate\\View\\Middleware\\ShareErrorsFrom
+Session->handle(Object(Illuminate\\Http\\Request), Object(Closure))
+[2026-07-27 15:10:07] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 257|MqFPOWkD7YJbutwMFR7...","is_bearer":true} 
+[2026-07-27 15:10:07] local.INFO: Returning campaigns for user 
+{"user_id":141,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:12:26] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 257|MqFPOWkD7YJbutwMFR7...","is_bearer":true} 
+[2026-07-27 15:12:26] local.INFO: Returning campaigns for user 
+{"user_id":141,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:12:29] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 257|MqFPOWkD7YJbutwMFR7...","is_bearer":true} 
+[2026-07-27 15:12:29] local.INFO: Returning campaigns for user 
+{"user_id":141,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:16:04] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:16:04] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:16:04] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:16:04] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:17:00] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:17:00] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:17:01] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:17:01] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:18:53] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:18:53] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:18:53] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:18:53] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:24:32] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:24:32] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:24:33] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:24:33] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:28:37] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:28:37] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+[2026-07-27 15:28:37] local.INFO: ParseBearerToken middleware invoked {"path":"
+/api/v2/campaign","method":"GET","has_auth_header":true,"auth_header_preview":"
+Bearer 260|iEUG9UvdmtaMxP66QMD...","is_bearer":true} 
+[2026-07-27 15:28:37] local.INFO: Returning campaigns for user 
+{"user_id":117,"campaign_count":0,"statuses":[]} 
+
+

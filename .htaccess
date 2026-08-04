@@ -1,0 +1,19 @@
+# Serve Next.js build assets correctly from the web root
+<IfModule mod_mime.c>
+  AddType text/css .css
+  AddType text/javascript .js .mjs
+  AddType application/javascript .js .mjs
+  AddType application/x-javascript .js .mjs
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+  AddType font/ttf .ttf
+  AddType image/svg+xml .svg
+  AddType image/x-icon .ico
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Map /_next/... requests to the copied build files under public/_next/...
+  RewriteRule ^_next/(.*)$ public/_next/$1 [L,QSA]
+</IfModule>
