@@ -19,7 +19,6 @@ import {
   Package,
 } from "lucide-react"
 import { useState } from "react"
-import { CategoryDrawer } from "@/components/category-drawer"
 import type { LucideIcon } from "lucide-react"
 
 type NavItem = {
@@ -34,7 +33,6 @@ export function MobileNav() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const [showMenu, setShowMenu] = useState(false)
-  const [showCategoryDrawer, setShowCategoryDrawer] = useState(false)
 
   const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + "/")
@@ -60,7 +58,7 @@ export function MobileNav() {
   const mainItems: NavItem[] = [
     { href: "/", label: "Home", icon: Home },
     { href: "/discover", label: "Discover", icon: Compass },
-    { href: "#", label: "Categories", icon: ShoppingBag, action: () => setShowCategoryDrawer(true) },
+    { href: "/shop", label: "Shop", icon: ShoppingBag },
     { href: "/blog", label: "Blog", icon: BookOpen },
   ]
 
@@ -69,7 +67,7 @@ export function MobileNav() {
 
   return (
     <>
-      <CategoryDrawer open={showCategoryDrawer} onOpenChange={setShowCategoryDrawer} />
+      {/* Category drawer removed for mobile - replaced with Shop link */}
 
       {showMenu && isDashboard && (
         <div className="fixed bottom-16 left-0 right-0 border-t border-neutral-200 bg-white/95 backdrop-blur md:hidden z-40">
@@ -105,7 +103,7 @@ export function MobileNav() {
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 border-t border-neutral-200 bg-white/95 backdrop-blur md:hidden z-40">
-        <div className="flex h-15 items-center justify-around px-1">
+        <div className="flex h-14 items-center justify-around px-1">
           {displayItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -117,7 +115,7 @@ export function MobileNav() {
                   onClick={item.action}
                   className="flex flex-col items-center justify-center w-full h-full gap-0.5 px-1 transition-colors text-neutral-600 hover:text-black"
                 >
-                  <Icon className="h-4.5 w-4.5" />
+                  <Icon className="h-5 w-5" />
                   <span className="text-[10px] leading-none">{item.label}</span>
                 </button>
               )
@@ -131,7 +129,7 @@ export function MobileNav() {
                   active ? "text-black" : "text-neutral-600"
                 }`}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-5 w-5" />
                 <span className="text-[10px] leading-none">{item.label}</span>
               </Link>
             )
@@ -142,7 +140,7 @@ export function MobileNav() {
               onClick={() => setShowMenu(!showMenu)}
               className="flex flex-col items-center justify-center w-full h-full gap-0.5 px-1 text-neutral-600 hover:text-black transition-colors"
             >
-              <ChevronUp className={`h-4.5 w-4.5 transition-transform ${showMenu ? "rotate-180" : ""}`} />
+              <ChevronUp className={`h-5 w-5 transition-transform ${showMenu ? "rotate-180" : ""}`} />
               <span className="text-[10px] leading-none">More</span>
             </button>
           ) : !user ? (
@@ -152,7 +150,7 @@ export function MobileNav() {
                 isActive("/login") ? "text-black" : "text-neutral-600"
               }`}
             >
-              <User className="h-4.5 w-4.5" />
+              <User className="h-5 w-5" />
               <span className="text-[10px] leading-none">Login</span>
             </Link>
           ) : (
@@ -160,7 +158,7 @@ export function MobileNav() {
               onClick={handleLogout}
               className="flex flex-col items-center justify-center w-full h-full gap-0.5 px-1 text-neutral-600 hover:text-black transition-colors"
             >
-              <LogOut className="h-4.5 w-4.5" />
+              <LogOut className="h-5 w-5" />
               <span className="text-[10px] leading-none">Logout</span>
             </button>
           )}

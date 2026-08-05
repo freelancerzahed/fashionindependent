@@ -1,10 +1,10 @@
-"use client"
+﻿"use client"
 
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { MobileTabs } from "@/components/mobile-tabs"
 import { useRouter } from "next/navigation"
 import { getCampaignPrice } from "@/lib/campaign-pricing"
@@ -63,7 +63,7 @@ export function ShopPageClient({
   initialSortOrder,
 }: ShopPageClientProps) {
   const router = useRouter()
-  
+
   const [products, setProducts] = useState<Product[]>(initialProducts.filter((product) => product.ctaLabel === 'Buy Now'))
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [searchTerm, setSearchTerm] = useState(initialSearch)
@@ -72,7 +72,6 @@ export function ShopPageClient({
   const [sortOrder, setSortOrder] = useState(initialSortOrder)
   const [priceRange, setPriceRange] = useState("all")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(pagination?.page || 1)
   const [isLoading, setIsLoading] = useState(false)
   const [currentPagination, setCurrentPagination] = useState(pagination || {
@@ -140,15 +139,6 @@ export function ShopPageClient({
     loadCategories()
   }, [])
 
-  const toggleFilters = () => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setIsMobileFiltersOpen((value) => !value)
-      return
-    }
-
-    setShowAdvancedFilters((value) => !value)
-  }
-
   const updateUrl = useCallback(
     (search: string, cat: string, sort: string, order: string, page: number, currentPriceRange = priceRange) => {
       const params = new URLSearchParams()
@@ -165,93 +155,21 @@ export function ShopPageClient({
     [priceRange, router]
   )
 
-  // Handle search with debounce
-  const handleSearch = useCallback(
-    (value: string) => {
-      setSearchTerm(value)
-      setCurrentPage(1)
-      updateUrl(value, category, sortBy, sortOrder, 1, priceRange)
-    },
-    [category, sortBy, sortOrder, priceRange, updateUrl]
-  )
-
-  // Handle filter change
-  const handleFilterChange = (filterId: string) => {
-    setActiveFilter(filterId)
-    setSortBy(filterId)
-    setCurrentPage(1)
-    updateUrl(searchTerm, category, filterId, sortOrder, 1, priceRange)
-  }
-
-  const handleCategoryChange = (value: string) => {
-    setCategory(value)
-    setCurrentPage(1)
-    updateUrl(searchTerm, value, sortBy, sortOrder, 1, priceRange)
-  }
-
-  const handlePriceChange = (value: string) => {
-    setPriceRange(value)
-    setCurrentPage(1)
-    updateUrl(searchTerm, category, sortBy, sortOrder, 1, value)
-  }
-
-  const clearFilters = () => {
-    setSearchTerm("")
-    setCategory("")
-    setSortBy("created_at")
-    setSortOrder("desc")
-    setPriceRange("all")
-    setActiveFilter("created_at")
-    setCurrentPage(1)
-    router.push("/shop")
-  }
-
-  const handleClearFilters = () => {
-    clearFilters()
-    setShowAdvancedFilters(false)
-    setIsMobileFiltersOpen(false)
-  }
-
-  const removeSearchFilter = () => {
-    setSearchTerm("")
-    setCurrentPage(1)
-    updateUrl("", category, sortBy, sortOrder, 1, priceRange)
-  }
-
-  const removeCategoryFilter = () => {
-    setCategory("")
-    setCurrentPage(1)
-    updateUrl(searchTerm, "", sortBy, sortOrder, 1, priceRange)
-  }
-
-  const removePriceFilter = () => {
-    setPriceRange("all")
-    setCurrentPage(1)
-    updateUrl(searchTerm, category, sortBy, sortOrder, 1, "all")
-  }
-
-  const removeSortFilter = () => {
-    setActiveFilter("created_at")
-    setSortBy("created_at")
-    setCurrentPage(1)
-    updateUrl(searchTerm, category, "created_at", sortOrder, 1, priceRange)
-  }
-
-  // Fetch products when filters change
   const fetchProducts = useCallback(
     async (search: string, cat: string, sort: string, order: string, page: number, append = false) => {
       setIsLoading(true)
       try {
         const params = new URLSearchParams()
-        
+
         if (search) params.append('search', search)
+        if (cat) params.append('category', cat)
+        if (sort && sort !== 'created_at') params.append('sort_by', sort)
+        if (order && order !== 'desc') params.append('sort_order', order)
+        if (priceRange && priceRange !== 'all') params.append('price_range', priceRange)
         params.append('page', page.toString())
         params.append('per_page', perPage.toString())
 
         const url = `/api/campaigns/active?${params.toString()}`
-
-        console.log('[ShopPageClient] Fetching from:', url)
-
         const response = await fetch(url, {
           headers: {
             'Accept': 'application/json',
@@ -261,10 +179,7 @@ export function ShopPageClient({
         if (!response.ok) throw new Error('Failed to fetch products')
 
         const data = await response.json()
-        console.log('[ShopPageClient] Response received:', data)
-
         const campaigns = Array.isArray(data.data) ? data.data : []
-
         const fundedCampaigns = campaigns.filter((campaign: any) => campaign.is_funded)
 
         const transformed = fundedCampaigns.map((campaign: any) => {
@@ -328,8 +243,86 @@ export function ShopPageClient({
         setIsLoading(false)
       }
     },
-    [perPage]
+    [perPage, priceRange]
   )
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearchTerm(value)
+      setCurrentPage(1)
+      updateUrl(value, category, sortBy, sortOrder, 1, priceRange)
+      fetchProducts(value, category, sortBy, sortOrder, 1, false)
+    },
+    [category, fetchProducts, priceRange, sortBy, sortOrder, updateUrl]
+  )
+
+  const handleFilterChange = (filterId: string) => {
+    setActiveFilter(filterId)
+    setSortBy(filterId)
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, filterId, sortOrder, 1, priceRange)
+    fetchProducts(searchTerm, category, filterId, sortOrder, 1, false)
+  }
+
+  const handleCategoryChange = (value: string) => {
+    setCategory(value)
+    setCurrentPage(1)
+    updateUrl(searchTerm, value, sortBy, sortOrder, 1, priceRange)
+    fetchProducts(searchTerm, value, sortBy, sortOrder, 1, false)
+  }
+
+  const handlePriceChange = (value: string) => {
+    setPriceRange(value)
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, sortBy, sortOrder, 1, value)
+    fetchProducts(searchTerm, category, sortBy, sortOrder, 1, false)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setCategory("")
+    setSortBy("created_at")
+    setSortOrder("desc")
+    setPriceRange("all")
+    setActiveFilter("created_at")
+    setCurrentPage(1)
+    router.push("/shop")
+    fetchProducts("", "", "created_at", "desc", 1, false)
+  }
+
+  const handleClearFilters = () => {
+    clearFilters()
+    setShowAdvancedFilters(false)
+  }
+
+  const removeSearchFilter = () => {
+    setSearchTerm("")
+    setCurrentPage(1)
+    updateUrl("", category, sortBy, sortOrder, 1, priceRange)
+    fetchProducts("", category, sortBy, sortOrder, 1, false)
+  }
+
+  const removeCategoryFilter = () => {
+    setCategory("")
+    setCurrentPage(1)
+    updateUrl(searchTerm, "", sortBy, sortOrder, 1, priceRange)
+    fetchProducts(searchTerm, "", sortBy, sortOrder, 1, false)
+  }
+
+  const removePriceFilter = () => {
+    setPriceRange("all")
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, sortBy, sortOrder, 1, "all")
+    fetchProducts(searchTerm, category, sortBy, sortOrder, 1, false)
+  }
+
+  const removeSortFilter = () => {
+    setActiveFilter("created_at")
+    setSortBy("created_at")
+    setCurrentPage(1)
+    updateUrl(searchTerm, category, "created_at", sortOrder, 1, priceRange)
+    fetchProducts(searchTerm, category, "created_at", sortOrder, 1, false)
+  }
 
   const handleLoadMore = useCallback(() => {
     if (isLoading || !currentPagination.has_more) return
@@ -352,13 +345,13 @@ export function ShopPageClient({
 
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
-  }, [currentPagination.has_more, handleLoadMore, isLoading])
+  }, [currentPagination.has_more, handleLoadMore, isLoading, products.length, currentPagination.per_page])
 
   if (isLoading && products.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900 mx-auto mb-4" />
           <p className="text-neutral-600">Loading products...</p>
         </div>
       </div>
@@ -366,9 +359,9 @@ export function ShopPageClient({
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50">
+    <div className="min-h-screen flex flex-col bg-neutral-50 pb-20">
       <main className="flex-1">
-        <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.14),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_45%,_#1f2937)] py-20 md:py-24">
+        <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.14),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_45%,_#1f2937)] py-12 md:py-24">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(251,191,36,0.16),_transparent_25%)]" />
           <div className="container relative mx-auto px-4 text-center">
             <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm font-medium text-neutral-100 backdrop-blur">
@@ -386,7 +379,7 @@ export function ShopPageClient({
 
         <section className="py-10 md:py-12">
           <div className="container mx-auto px-4">
-            <div className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm md:p-6">
+            <div className="static bg-white rounded-3xl border border-neutral-200 p-4 shadow-sm md:sticky md:top-14 md:z-30 md:bg-white/70 md:backdrop-blur-sm md:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="w-full max-w-2xl">
                   <label className="mb-2 block text-sm font-medium text-neutral-700">Search</label>
@@ -407,7 +400,7 @@ export function ShopPageClient({
                   <Button
                     variant="outline"
                     className="h-11 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"
-                    onClick={toggleFilters}
+                    onClick={() => setShowAdvancedFilters((value) => !value)}
                   >
                     <SlidersHorizontal className="mr-2 h-4 w-4" />
                     {showAdvancedFilters ? "Hide filters" : "Filters"}
@@ -425,186 +418,151 @@ export function ShopPageClient({
                 </div>
               </div>
 
-              {(showAdvancedFilters || isMobileFiltersOpen) && (
-                <div className="mt-5 grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 md:grid-cols-[1.1fr_0.9fr]">
-                  <div>
-                    <p className="mb-3 text-sm font-semibold text-neutral-900">Browse by category</p>
-                    <p className="mb-3 text-sm text-neutral-600">Pick a style or collection to narrow the results.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {categories.map((option) => (
-                        <Button
-                          key={option.id}
-                          variant={category === option.value ? "default" : "outline"}
-                          onClick={() => handleCategoryChange(option.value)}
-                          disabled={isLoading}
-                          className={category === option.value ? "h-10 rounded-full bg-neutral-900 px-4 text-white" : "h-10 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="mb-3 text-sm font-semibold text-neutral-900">Price range</p>
-                    <p className="mb-3 text-sm text-neutral-600">Choose a budget to make browsing faster.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {priceFilterOptions.map((option) => (
-                        <Button
-                          key={option.id}
-                          variant={priceRange === option.id ? "default" : "outline"}
-                          onClick={() => handlePriceChange(option.id)}
-                          className={priceRange === option.id ? "h-10 rounded-full bg-neutral-900 px-4 text-white" : "h-10 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {(searchTerm || category || priceRange !== "all" || activeFilter !== "created_at") && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {searchTerm && (
-                    <button
-                      type="button"
-                      onClick={removeSearchFilter}
-                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
-                    >
-                      Search: {searchTerm}
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {category && (
-                    <button
-                      type="button"
-                      onClick={removeCategoryFilter}
-                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
-                    >
-                      Category
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {priceRange !== "all" && (
-                    <button
-                      type="button"
-                      onClick={removePriceFilter}
-                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
-                    >
-                      Price: {priceFilterOptions.find((option) => option.id === priceRange)?.label}
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {activeFilter !== "created_at" && (
-                    <button
-                      type="button"
-                      onClick={removeSortFilter}
-                      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
-                    >
-                      Sort: {filterTabs.find((tab) => tab.id === activeFilter)?.label}
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-6 flex flex-wrap items-center gap-2">
-                <p className="mr-2 text-sm font-medium text-neutral-700">Sort by</p>
-                {filterTabs.map((tab) => (
-                  <Button
-                    key={tab.id}
-                    variant={activeFilter === tab.id ? "default" : "outline"}
-                    onClick={() => handleFilterChange(tab.id)}
-                    disabled={isLoading}
-                    className={activeFilter === tab.id ? "h-10 rounded-full bg-neutral-900 px-4 text-white" : "h-10 rounded-full border-neutral-200 bg-white px-4 text-neutral-700 hover:bg-neutral-100"}
+              <div className="mt-4 hidden md:flex flex-wrap items-center gap-2">
+                {categories.slice(0, 4).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleCategoryChange(option.value)}
+                    className={`rounded-full border px-3 py-2 text-sm ${category === option.value ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'}`}
                   >
-                    {tab.label}
-                  </Button>
+                    {option.label}
+                  </button>
+                ))}
+                {priceFilterOptions.slice(1, 3).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handlePriceChange(option.id)}
+                    className={`rounded-full border px-3 py-2 text-sm ${priceRange === option.id ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'}`}
+                  >
+                    {option.label}
+                  </button>
                 ))}
               </div>
-            </div>
 
-            {isMobileFiltersOpen && (
-              <div className="fixed inset-0 z-50 bg-black/50 md:hidden" onClick={() => setIsMobileFiltersOpen(false)}>
-                <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border border-neutral-200 bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-base font-semibold text-neutral-900">Filter & sort</p>
-                      <p className="text-sm text-neutral-600">Refine results without leaving the page.</p>
-                    </div>
-                    <button type="button" onClick={() => setIsMobileFiltersOpen(false)} className="rounded-full p-2 text-neutral-600 hover:bg-neutral-100">
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  <div className="mt-5 space-y-5">
-                    <div>
-                      <p className="mb-2 text-sm font-semibold text-neutral-900">Category</p>
+              {showAdvancedFilters && (
+                <div className="mt-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-semibold text-neutral-900">Category</p>
+                        <span className="text-xs text-neutral-500">Tap to choose</span>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {categories.map((option) => (
-                          <Button
+                          <button
                             key={option.id}
-                            variant={category === option.value ? "default" : "outline"}
+                            type="button"
                             onClick={() => handleCategoryChange(option.value)}
-                            className={category === option.value ? "rounded-full bg-neutral-900 px-4 text-white" : "rounded-full border-neutral-200 bg-white px-4 text-neutral-700"}
+                            className={`rounded-full px-4 py-2 text-sm ${category === option.value ? 'bg-neutral-900 text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'}`}
                           >
                             {option.label}
-                          </Button>
+                          </button>
                         ))}
                       </div>
                     </div>
 
-                    <div>
-                      <p className="mb-2 text-sm font-semibold text-neutral-900">Price range</p>
+                    <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-semibold text-neutral-900">Price range</p>
+                        <span className="text-xs text-neutral-500">Filter by budget</span>
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {priceFilterOptions.map((option) => (
-                          <Button
+                          <button
                             key={option.id}
-                            variant={priceRange === option.id ? "default" : "outline"}
+                            type="button"
                             onClick={() => handlePriceChange(option.id)}
-                            className={priceRange === option.id ? "rounded-full bg-neutral-900 px-4 text-white" : "rounded-full border-neutral-200 bg-white px-4 text-neutral-700"}
+                            className={`rounded-full px-4 py-2 text-sm ${priceRange === option.id ? 'bg-neutral-900 text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'}`}
                           >
                             {option.label}
-                          </Button>
+                          </button>
                         ))}
                       </div>
                     </div>
+                  </div>
 
-                    <div>
-                      <p className="mb-2 text-sm font-semibold text-neutral-900">Sort</p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
+                      <p className="mb-3 text-sm font-semibold text-neutral-900">Sort by</p>
                       <div className="flex flex-wrap gap-2">
                         {filterTabs.map((tab) => (
-                          <Button
+                          <button
                             key={tab.id}
-                            variant={activeFilter === tab.id ? "default" : "outline"}
+                            type="button"
                             onClick={() => handleFilterChange(tab.id)}
-                            className={activeFilter === tab.id ? "rounded-full bg-neutral-900 px-4 text-white" : "rounded-full border-neutral-200 bg-white px-4 text-neutral-700"}
+                            className={`rounded-full px-4 py-2 text-sm ${activeFilter === tab.id ? 'bg-neutral-900 text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'}`}
                           >
                             {tab.label}
-                          </Button>
+                          </button>
                         ))}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="mt-6 flex gap-2">
-                    <Button variant="outline" className="flex-1 rounded-full border-neutral-200" onClick={handleClearFilters}>
-                      Reset
-                    </Button>
-                    <Button className="flex-1 rounded-full bg-neutral-900 text-white" onClick={() => setIsMobileFiltersOpen(false)}>
-                      Apply
-                    </Button>
+                    <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
+                      <p className="mb-3 text-sm font-semibold text-neutral-900">Actions</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1 rounded-full border-neutral-200" onClick={handleClearFilters}>
+                          Reset
+                        </Button>
+                        <Button className="flex-1 rounded-full bg-neutral-900 text-white" onClick={() => setShowAdvancedFilters(false)}>
+                          Done
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {(searchTerm || category || priceRange !== "all" || activeFilter !== "created_at") && (
+              <div className="mt-6 flex flex-wrap gap-2">
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={removeSearchFilter}
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                  >
+                    Search: {searchTerm}
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {category && (
+                  <button
+                    type="button"
+                    onClick={removeCategoryFilter}
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                  >
+                    Category
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {priceRange !== "all" && (
+                  <button
+                    type="button"
+                    onClick={removePriceFilter}
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                  >
+                    Price: {priceFilterOptions.find((option) => option.id === priceRange)?.label}
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {activeFilter !== "created_at" && (
+                  <button
+                    type="button"
+                    onClick={removeSortFilter}
+                    className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                  >
+                    Sort: {filterTabs.find((tab) => tab.id === activeFilter)?.label}
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             )}
 
             <div className="mt-8 md:hidden">
-              <MobileTabs
-                tabs={filterTabs}
-                activeTab={activeFilter}
-                onTabChange={handleFilterChange}
-              >
+              <MobileTabs tabs={filterTabs} activeTab={activeFilter} onTabChange={handleFilterChange}>
                 {isLoading ? (
                   <ProductsLoadingSkeleton />
                 ) : products.length > 0 ? (

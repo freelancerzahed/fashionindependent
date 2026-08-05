@@ -60,13 +60,7 @@ export function Header() {
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
 
-            {user ? (
-              <ProfileDropdown />
-            ) : (
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Login</Link>
-              </Button>
-            )}
+            {user ? <ProfileDropdown /> : null}
           </div>
         </div>
 

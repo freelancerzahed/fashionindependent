@@ -175,16 +175,16 @@ function DiscoverPageContent({ initialCampaigns = [], initialCategories = [], in
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1">
-        <section className="bg-gradient-to-br from-neutral-50 to-neutral-100 py-12">
+        <section className="bg-gradient-to-br from-neutral-50 to-neutral-100 py-8 md:py-12">
           <div className="container mx-auto px-4">
-            <h1 className="text-4xl font-bold mb-6 text-center">Creatives in the spotlight</h1>
+            <h1 className="text-2xl md:text-4xl font-bold mb-4 md:mb-6 text-center">Creatives in the spotlight</h1>
 
             <div className="max-w-2xl mx-auto relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
               <Input
                 type="search"
                 placeholder="Search campaigns..."
-                className="pl-12 h-12"
+                className="pl-12 h-12 text-base md:text-lg"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 disabled={loading && campaigns.length === 0}
@@ -193,7 +193,7 @@ function DiscoverPageContent({ initialCampaigns = [], initialCategories = [], in
           </div>
         </section>
 
-        <section className="border-b bg-white py-4 sticky top-0 z-10">
+        <section className="border-b bg-white py-3 sticky top-0 z-10">
           <div className="container mx-auto px-4">
             <div className="hidden md:flex gap-4 overflow-x-auto pb-2">
               <Button
@@ -227,13 +227,13 @@ function DiscoverPageContent({ initialCampaigns = [], initialCategories = [], in
           </div>
         </section>
 
-        <section className="py-12 bg-white hidden md:block">
+        <section className="py-10 md:py-12 bg-white hidden md:block">
           <div className="container mx-auto px-4">
             {renderContent(loading, error, filteredCampaigns)}
           </div>
         </section>
 
-        <section className="py-12 bg-white md:hidden">
+        <section className="py-8 bg-white md:hidden">
           <div className="container mx-auto px-4">
             {renderContent(loading, error, filteredCampaigns)}
           </div>
